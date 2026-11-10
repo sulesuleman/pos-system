@@ -1,0 +1,41 @@
+# --- .NET (backend) ---
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userprefs
+TestResults/
+*.trx
+coverage*.xml
+coverage*.json
+
+# --- Node (frontend) ---
+node_modules/
+dist/
+dist-ssr/
+coverage/
+*.tsbuildinfo
+
+# --- Secrets (never commit). .env.example is the template and is tracked. ---
+.env
+.env.*
+!.env.example
+*.local
+appsettings.*.local.json
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+
+# --- IDE / OS ---
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.sw?
+.DS_Store
+Thumbs.db
+
+# --- Claude Code local tooling (installed skills/plugins, per-user settings) ---
+.claude/

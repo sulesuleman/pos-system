@@ -1,0 +1,134 @@
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when its first story starts (via build's sprint sync)
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates the next story after the previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; the status view surfaces open ones
+generated: 10-13-2026 14:55
+last_updated: 10-14-2026 12:05
+project: POS-System
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+development_status:
+  epic-1: in-progress
+  1-1-project-scaffold-and-build-pipeline: review
+  1-2-super-admin-sign-in: backlog
+  1-3-register-a-mart-and-its-owner-with-tenant-isolation: backlog
+  1-4-owner-activation-and-login: backlog
+  1-5-mart-audit-log: backlog
+  1-6-manage-branches: backlog
+  1-7-suspend-and-reactivate-a-mart: backlog
+  1-8-hosting-deployment-and-backups: backlog
+  epic-1-retrospective: optional
+
+  epic-2: backlog
+  2-1-define-roles-from-the-permission-list: backlog
+  2-2-create-staff-accounts-and-assign-roles-per-branch: backlog
+  2-3-staff-activation-and-login: backlog
+  2-4-enforce-permissions-and-branch-assignment-on-every-request: backlog
+  2-5-disable-accounts-and-reset-pins: backlog
+  2-6-register-a-branch-s-first-device: backlog
+  2-7-add-and-revoke-registered-devices: backlog
+  2-8-enforce-registered-devices: backlog
+  2-9-recover-with-the-offline-recovery-code: backlog
+  2-10-owner-recovery-through-the-super-admin: backlog
+  epic-2-retrospective: optional
+
+  epic-3: backlog
+  3-1-create-edit-and-deactivate-products: backlog
+  3-2-find-products-quickly-in-a-large-catalog: backlog
+  3-3-several-barcodes-per-product-and-generic-products: backlog
+  3-4-pack-barcodes: backlog
+  3-5-in-store-codes-for-unlabeled-items: backlog
+  3-6-branch-prices-and-reorder-levels: backlog
+  3-7-bulk-import-products-from-csv: backlog
+  epic-3-retrospective: optional
+
+  epic-4: backlog
+  4-1-counter-platform-spike-ad-1-gate: backlog
+  4-2-counter-app-shell-and-counter-registration: backlog
+  4-3-first-catalog-download: backlog
+  4-4-live-catalog-updates: backlog
+  4-5-build-a-cart-by-scanning: backlog
+  4-6-type-in-a-barcode-that-will-not-scan: backlog
+  4-7-complete-a-sale-with-a-receipt-number: backlog
+  4-8-print-and-reprint-the-sales-receipt: backlog
+  4-9-sync-sales-to-the-cloud: backlog
+  4-10-replacement-counter-keeps-receipt-numbers-unique: backlog
+  epic-4-retrospective: optional
+
+  epic-5: backlog
+  5-1-open-a-shift-with-a-cash-float: backlog
+  5-2-close-a-shift-with-a-cash-count: backlog
+  5-3-close-a-shift-left-open: backlog
+  5-4-new-prices-apply-at-the-shift-boundary: backlog
+  5-5-shift-and-cashier-totals-for-the-owner: backlog
+  epic-5-retrospective: optional
+
+  epic-6: backlog
+  6-1-enter-opening-stock-on-screen: backlog
+  6-2-import-opening-stock-from-csv: backlog
+  6-3-spot-count-a-product: backlog
+  6-4-spot-count-a-shelf: backlog
+  6-5-scheduled-stock-balance-check: backlog
+  epic-6-retrospective: optional
+
+  epic-7: backlog
+  7-1-protect-counter-data-at-rest: backlog
+  7-2-log-in-at-the-counter-without-internet: backlog
+  7-3-lock-a-staff-id-after-wrong-pins: backlog
+  7-4-72-hour-offline-limit: backlog
+  7-5-unsynced-sales-warnings: backlog
+  7-6-park-rejected-events: backlog
+  7-7-uploads-from-revoked-devices-and-deactivated-branches: backlog
+  7-8-re-send-after-a-cloud-restore: backlog
+  7-9-counters-of-a-suspended-mart: backlog
+  epic-7-retrospective: optional
+
+  epic-8: backlog
+  8-1-manage-suppliers: backlog
+  8-2-enter-a-delivery: backlog
+  8-3-conversion-override-and-counted-quantities: backlog
+  8-4-correct-a-confirmed-delivery: backlog
+  8-5-purchase-price-visibility-and-history: backlog
+  epic-8-retrospective: optional
+
+  epic-9: backlog
+  9-1-request-a-return-at-the-counter: backlog
+  9-2-approve-or-reject-a-return-at-the-counter: backlog
+  9-3-approve-or-reject-a-return-on-a-registered-device: backlog
+  9-4-apply-accepted-returns-in-the-cloud: backlog
+  epic-9-retrospective: optional
+
+  epic-10: backlog
+  10-1-sales-dashboard: backlog
+  10-2-stock-levels-and-alerts: backlog
+  10-3-exceptions-report-stock-and-cash: backlog
+  10-4-exceptions-report-returns-and-cashier-behavior: backlog
+  10-5-exceptions-report-sync-and-device-issues: backlog
+  epic-10-retrospective: optional

@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          # CI-only password for a throwaway, job-local container. Not a real secret; never used outside this job.
+          MSSQL_SA_PASSWORD: "P@ssw0rd_CI_Only_2026!"
+        ports:
+          - 1433:1433
+
+    env:
+      ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=PosSystem;User Id=sa;Password=P@ssw0rd_CI_Only_2026!;TrustServerCertificate=True;"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: backend/global.json
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version 10.0.14
+
+      - name: Wait for SQL Server and apply migrations
+        run: |
+          for i in $(seq 1 30); do
+            if dotnet ef database update --project backend.Api --startup-project backend.Api; then
+              exit 0
+            fi
+            echo "SQL Server not ready yet, retrying in 2s..."
+            sleep 2
+          done
+          echo "SQL Server did not become ready in time" >&2
+          exit 1
+
+      - name: Test
+        run: dotnet test --no-build --configuration Release

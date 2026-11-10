@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="backend.Api/backend.Api.csproj" />
+  <Project Path="backend.Api.Tests/backend.Api.Tests.csproj" />
+  <Project Path="backend.IntegrationTests/backend.IntegrationTests.csproj" />
+</Solution>

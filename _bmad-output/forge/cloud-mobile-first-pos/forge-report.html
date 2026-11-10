@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forge Report: Cloud POS</title>
+<style>
+  :root { --bg:#f6f1e7; --ink:#2a2420; --muted:#6b6259; --card:#fffaf0; --line:#dccfb8; --seal:#8f1d21; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 Georgia,'Times New Roman',serif; }
+  main { max-width:820px; margin:0 auto; padding:32px 16px 64px; }
+  header { display:flex; gap:24px; align-items:center; justify-content:space-between; flex-wrap:wrap; border-bottom:2px solid var(--line); padding-bottom:20px; }
+  h1 { margin:0 0 4px; font-size:1.8rem; }
+  .sub { color:var(--muted); margin:0; }
+  h2 { margin:32px 0 10px; font-size:1.2rem; border-left:4px solid var(--seal); padding-left:10px; }
+  ul { margin:0; padding-left:20px; }
+  li { margin:6px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+  .persona b { display:block; }
+  .persona span { color:var(--muted); font-size:.92rem; }
+  svg { flex:none; }
+  footer { margin-top:40px; color:var(--muted); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Cloud POS + Inventory for a Mart</h1>
+      <p class="sub">Forge report · 2026-10-05 · Outcome: hardened</p>
+    </div>
+    <svg width="130" height="130" viewBox="0 0 130 130" role="img" aria-label="Hardened seal">
+      <defs><path id="arc" d="M65,65 m-44,0 a44,44 0 1,1 88,0 a44,44 0 1,1 -88,0"/></defs>
+      <circle cx="65" cy="65" r="60" fill="#8f1d21"/>
+      <circle cx="65" cy="65" r="52" fill="none" stroke="#f6e3c8" stroke-width="2"/>
+      <circle cx="65" cy="65" r="32" fill="none" stroke="#f6e3c8" stroke-width="1.5"/>
+      <text font-family="Georgia,serif" font-size="11" letter-spacing="3" fill="#f6e3c8"><textPath href="#arc" startOffset="0">FORGED · TESTED · SEALED ·</textPath></text>
+      <text x="65" y="70" text-anchor="middle" font-family="Georgia,serif" font-size="13" font-weight="bold" fill="#f6e3c8">HARDENED</text>
+    </svg>
+  </header>
+
+  <h2>The idea</h2>
+  <p>Replace the Mart's single server-room desktop retail app with a cloud, responsive web POS and inventory system. Today a manager keys supplier receipts into the desktop, counters scan with USB barcode scanners, and stock is deducted when payment is made.</p>
+
+  <h2>Locked decisions</h2>
+  <div class="card"><ul>
+    <li><b>The counter never stops selling.</b> Counters work offline and sync later. This is a hard requirement.</li>
+    <li><b>Sales are additive events.</b> Stock = received − sold, so sales never conflict. Mismatched stock goes to an exceptions report. Price and product edits: the cloud copy wins.</li>
+    <li><b>Roles.</b> Cashiers sell only. Manager/owner edits stock, products and prices only from registered devices (the server-room PC from day one). Admin/owner views stats read-only on a phone. Every change is audit-logged.</li>
+    <li><b>Devices.</b> Counter and server-room desktop use USB scanners. The phone is a read-only dashboard. "Mobile-first" means responsive web.</li>
+    <li><b>Products.</b> Per-product carton → pack → unit conversion. Only single units carry barcodes. All items are prepackaged.</li>
+    <li><b>Payments and receipts.</b> Cash and card, recorded only. Thermal receipt printer.</li>
+    <li><b>Returns.</b> Handled by the cashier at the counter with no approval; the item is restocked.</li>
+    <li><b>v1 success, all equal.</b> Never stops selling · faster receipt entry · stock matches shelf · owner checks sales on phone.</li>
+    <li><b>Build order.</b> Offline counters → receiving → stock accuracy and counts → phone dashboard.</li>
+  </ul></div>
+
+  <h2>Rejected, and why</h2>
+  <div class="card"><ul>
+    <li><b>Remote stock entry and phone-camera scanning.</b> A stolen phone or password could alter inventory, and receiving is physical anyway. Phone receiving with owner approval is a v2 candidate.</li>
+    <li><b>Manager approval for returns.</b> The owner chose speed at the counter.</li>
+    <li><b>Deferred, not rejected:</b> weighed items, card payment processing, and import of existing data.</li>
+  </ul></div>
+
+  <h2>Weak points that survived</h2>
+  <div class="card"><ul>
+    <li><b>Offline sync</b> is the largest build risk.</li>
+    <li><b>Old app data is unverified.</b> Its format is unknown. The data model must support bulk import, and cutover needs one full physical stock count.</li>
+    <li><b>Unapproved returns</b> allow refund abuse and restocking of damaged goods. Mitigation: returns per cashier appear in the admin exceptions report, which only helps if the owner reads it.</li>
+    <li><b>Unconfirmed assumptions:</b> hard-drive corruption is the main pain; no weighed items; internet is reliable.</li>
+    <li><b>Shrinkage</b> (theft, damage, expiry) stays invisible without regular spot counts.</li>
+  </ul></div>
+
+  <h2>Who pressure-tested it</h2>
+  <div class="grid">
+    <div class="card persona"><b>📋 John, Product Manager</b><span>Asked what actually went wrong and how success is measured.</span></div>
+    <div class="card persona"><b>🏗️ Winston, Architect</b><span>Offline-first vs failover, and how "server room only" can be enforced.</span></div>
+    <div class="card persona"><b>🎨 Sally, UX Designer</b><span>Questioned who holds the phone and what "mobile-first" means.</span></div>
+    <div class="card persona"><b>📊 Mary, Business Analyst</b><span>Found the receiving gap and the migration risk.</span></div>
+    <div class="card persona"><b>💻 Amelia, Engineer</b><span>Pushed the focus onto launch-day money flow.</span></div>
+    <div class="card persona"><b>🛒 Raj Malhotra, rival mart owner (generated)</b><span>Attacked internet dependence, overselling, access control and returns.</span></div>
+  </div>
+
+  <footer>Source of record: .memlog.md. Short handoff for planning skills: forged-idea.md.</footer>
+</main>
+</body>
+</html>

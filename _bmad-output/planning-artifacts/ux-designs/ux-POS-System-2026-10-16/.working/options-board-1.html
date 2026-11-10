@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POS Options Board</title>
+<style>
+/* Page chrome (not a design direction): bg #F4F5F7, text #1D2330, border #DDE1E7 */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:#F4F5F7;color:#1D2330;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.ur{font-family:"Noto Nastaliq Urdu","Jameel Noori Nastaleeq","Urdu Typesetting","Segoe UI",Tahoma,sans-serif;line-height:1.6}
+nav.top{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid #DDE1E7;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+nav.top .in{display:flex;gap:6px;overflow-x:auto;padding:8px 16px;max-width:1320px;margin:0 auto;align-items:center}
+nav.top b{white-space:nowrap;margin-right:6px;font-size:14px}
+nav.top a{white-space:nowrap;text-decoration:none;color:#1D2330;font-size:13px;padding:4px 10px;border:1px solid #DDE1E7;border-radius:999px;background:#FAFBFC}
+nav.top a:hover{background:#EEF2F7}
+main{max-width:1320px;margin:0 auto;padding:0 16px 56px}
+header.intro{padding:24px 0 4px}
+header.intro h1{margin:0 0 6px;font-size:24px}
+header.intro p{margin:0;color:#4A5262;max-width:820px}
+section{scroll-margin-top:60px;padding-top:32px}
+section>h2{margin:0;font-size:20px}
+section>h2 .n{color:#6B7385;font-weight:600;margin-right:6px}
+section>p.why{margin:4px 0 14px;color:#4A5262;max-width:900px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px}
+.card{background:#fff;border:1px solid #DDE1E7;border-radius:10px;padding:14px;display:flex;flex-direction:column;min-width:0}
+.card h3{margin:0;font-size:16px;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.oid{display:inline-block;background:#1D2330;color:#fff;font-weight:700;border-radius:6px;padding:1px 8px;font-size:13px}
+.mock{overflow-x:auto;background:#E9ECF0;border-radius:8px;padding:12px;margin:10px 0 10px}
+.cap{font-size:12px;color:#6B7385;margin:-4px 0 8px}
+.card ul{margin:0;padding-left:18px;font-size:14px;color:#2F3645}
+.card li{margin:2px 0}
+.tg{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:#6B7385;margin-right:4px}
+.kbd{display:inline-block;font:11px/1 ui-monospace,Consolas,monospace;border:1px solid #B9C0CB;border-bottom-width:2px;border-radius:4px;padding:2px 4px;background:#fff;color:#1D2330}
+.answer{margin-top:36px;background:#fff;border:2px solid #1D2330;border-radius:12px;padding:18px}
+.answer h2{margin:0 0 6px;font-size:18px}
+.answer code{background:#EEF2F7;padding:2px 6px;border-radius:4px;font-size:14px}
+
+/* ---------- Monitor + Counter screen (shared) ---------- */
+.mon{min-width:540px;background:#1B1C20;padding:10px;border-radius:10px 10px 6px 6px}
+.mon .scr{aspect-ratio:1366/768;overflow:hidden;background:#fff;color:#1D2330;font-size:11px;display:flex;flex-direction:column}
+.stand{width:90px;height:14px;background:#2A2B30;margin:0 auto;border-radius:0 0 6px 6px}
+.cs-top{display:flex;justify-content:space-between;gap:8px;padding:5px 8px;background:#263040;color:#fff;font-size:10.5px}
+.cs-top .st{display:flex;gap:10px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#2EB872;margin-right:3px;vertical-align:middle}
+.dot.off{background:#E8A33D}
+.cs-body{flex:1;display:grid;grid-template-columns:1fr 150px;min-height:0}
+.cs-main{padding:7px 8px;display:flex;flex-direction:column;gap:6px;min-height:0;overflow:hidden}
+.scan{border:1px solid #9AA3B2;border-radius:4px;padding:5px 7px;background:#fff;color:#6B7385;display:flex;justify-content:space-between}
+.scan.focus{border:2px solid #1976D2;box-shadow:0 0 0 3px rgba(25,118,210,.25);color:#1D2330}
+.caret{display:inline-block;width:1px;height:11px;background:#1D2330;vertical-align:middle;margin-left:1px}
+table.cart{width:100%;border-collapse:collapse}
+table.cart th{font-weight:600;color:#6B7385;text-align:left;border-bottom:1px solid #DDE1E7;padding:3px 4px;font-size:10px}
+table.cart td{border-bottom:1px solid #EEF0F3;padding:3px 4px}
+table.cart .r{text-align:right;white-space:nowrap}
+table.cart tr.sel td{background:#E8F1FB}
+.cs-side{border-left:1px solid #DDE1E7;background:#F7F8FA;padding:8px;display:flex;flex-direction:column;gap:6px}
+.lbl{font-size:10px;color:#6B7385;text-transform:uppercase;letter-spacing:.04em}
+.bigtot{font-size:22px;font-weight:700}
+.fbar{display:flex;gap:4px;flex-wrap:wrap;padding:5px 6px;background:#EEF0F3;border-top:1px solid #DDE1E7;font-size:10px}
+.fbar span{background:#fff;border:1px solid #CBD1DA;border-radius:3px;padding:2px 5px}
+.fbar b{color:#1976D2}
+.btn{display:inline-block;text-align:center;border-radius:4px;padding:5px 8px;font-weight:600;border:1px solid #CBD1DA;background:#fff}
+.btn.pri{background:#1976D2;border-color:#1976D2;color:#fff}
+
+/* ---------- 1B touch ---------- */
+.t-body{flex:1;display:grid;grid-template-columns:1fr 190px;min-height:0}
+.t-line{display:flex;align-items:center;gap:6px;padding:6px 8px;border-bottom:1px solid #EEF0F3;font-size:12.5px}
+.t-line .nm{flex:1}
+.t-q{display:flex;align-items:center;gap:4px}
+.t-q i{font-style:normal;width:26px;height:26px;border-radius:6px;border:1px solid #CBD1DA;display:flex;align-items:center;justify-content:center;font-weight:700;background:#F7F8FA}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.pad i{font-style:normal;height:28px;border-radius:6px;background:#fff;border:1px solid #CBD1DA;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.t-pay{background:#2E7D32;color:#fff;border-radius:8px;text-align:center;padding:10px;font-size:16px;font-weight:700}
+.t-tabs{display:flex;gap:5px;padding:6px 8px}
+.t-tabs span{flex:1;text-align:center;border-radius:8px;background:#EEF0F3;padding:8px 0;font-weight:600;font-size:11.5px}
+
+/* ---------- Density (section 2) ---------- */
+.till{min-width:520px;background:#fff;border:1px solid #CBD1DA;border-radius:6px;overflow:hidden}
+.d2a{font-size:10.5px}
+.d2a table.cart td,.d2a table.cart th{padding:2px 4px}
+.d2a .foot{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:6px 8px;background:#F7F8FA;border-top:1px solid #DDE1E7}
+.d2b .line{display:flex;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #EEF0F3;font-size:20px}
+.d2b .line small{display:block;font-size:13px;color:#6B7385}
+.d2b .tot{background:#102A43;color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center}
+.d2b .tot b{font-size:48px;line-height:1}
+.d2c table.cart{font-size:13.5px}
+.d2c table.cart td{padding:6px 8px}
+.d2c table.cart th{padding:4px 8px;font-size:11px}
+.d2c .tot{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#F2F6FB;border-top:1px solid #DDE1E7}
+
+/* ---------- Dialogs (sections 3,4) ---------- */
+.dim{min-width:360px;background:rgba(29,35,48,.55);padding:18px;border-radius:6px}
+.dlg{background:#fff;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25);padding:14px;font-size:13px}
+.dlg h4{margin:0 0 8px;font-size:14px;display:flex;justify-content:space-between}
+.amt{font-size:26px;font-weight:700}
+.chg{background:#E7F5EC;border:1px solid #9BD3AE;border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.chg b{font-size:30px;color:#1B5E20}
+.field{border:2px solid #1976D2;box-shadow:0 0 0 3px rgba(25,118,210,.2);border-radius:6px;padding:8px 10px;font-size:20px;font-weight:700;display:flex;justify-content:space-between}
+.field small{font-size:11px;color:#6B7385;font-weight:400;align-self:center}
+.pt{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pt div{border:1px solid #CBD1DA;border-radius:8px;padding:12px;text-align:center;font-weight:700;font-size:15px}
+.pt div.on{border:2px solid #1976D2;background:#E8F1FB}
+.qc{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0}
+.qc div{border:1px solid #CBD1DA;border-radius:6px;padding:8px 2px;text-align:center;font-weight:700;font-size:12.5px}
+.qc div small{display:block;font-weight:400;font-size:10px;color:#6B7385}
+.qc div.dis{color:#A9B0BB;background:#F4F5F7;border-style:dashed}
+.qc div.on{border:2px solid #1976D2;background:#E8F1FB}
+.hint{font-size:11px;color:#6B7385;margin-top:8px}
+.res{border:1px solid #DDE1E7;border-radius:6px;overflow:hidden;margin-top:6px}
+.res div{display:flex;justify-content:space-between;gap:8px;padding:6px 9px;border-bottom:1px solid #EEF0F3}
+.res div:last-child{border-bottom:0}
+.res div.hl{background:#1976D2;color:#fff}
+.res small{color:inherit;opacity:.7}
+.qp{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.qp div{border:1px solid #CBD1DA;border-radius:6px;padding:6px 4px;text-align:center;background:#fff;min-height:54px;display:flex;flex-direction:column;justify-content:center;font-size:11px}
+.qp div b{font-size:11.5px}
+.qp div .k{font-size:9.5px;color:#6B7385}
+
+/* ---------- Brand (section 5) ---------- */
+.bwrap{display:flex;flex-direction:column;gap:10px;min-width:300px}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-radius:6px;font-size:12px}
+.logo{display:flex;align-items:center;gap:6px;font-weight:700}
+.lmark{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.rcpt{width:232px;margin:0 auto;background:#fff;color:#111;font:10.5px/1.45 Consolas,"Courier New",monospace;padding:12px 10px;box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.rcpt .c{text-align:center}
+.rcpt .row{display:flex;justify-content:space-between;gap:6px}
+.rcpt hr{border:0;border-top:1px dashed #555;margin:5px 0}
+.rcpt .ur{font-size:11px}
+.rlogo{display:flex;justify-content:center;align-items:center;gap:5px;font:700 13px system-ui,"Segoe UI",sans-serif}
+
+/* ---------- Phone (section 6) ---------- */
+.phone{width:292px;margin:0 auto;border:9px solid #111;border-radius:30px;background:#fff;overflow:hidden;font-size:12.5px}
+.ph-notch{height:16px;background:#111;width:96px;margin:0 auto;border-radius:0 0 10px 10px}
+.ph-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #EEF0F3}
+.ro{font-size:10.5px;font-weight:700;background:#FFF3E0;color:#8A4B00;border:1px solid #F3C98B;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.ph-c{padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-height:390px}
+.tile{border:1px solid #E3E6EB;border-radius:10px;padding:9px 10px}
+.tile .v{font-size:20px;font-weight:700}
+.kv{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #F0F2F5}
+.kv:last-child{border-bottom:0}
+.split{display:flex;height:10px;border-radius:5px;overflow:hidden;margin:6px 0 3px}
+.chip{display:inline-block;font-size:10.5px;border-radius:999px;padding:1px 7px;background:#EEF0F3}
+.chip.ok{background:#E7F5EC;color:#1B5E20}
+.chip.warn{background:#FFF3E0;color:#8A4B00}
+.chip.bad{background:#FDECEC;color:#A12622}
+.ph-tabs{display:flex;border-top:1px solid #EEF0F3;font-size:10.5px;color:#6B7385}
+.ph-tabs span{flex:1;text-align:center;padding:7px 0}
+.ph-tabs span.on{color:#1976D2;font-weight:700}
+
+/* ---------- Directions (section 7) ---------- */
+.dir{min-width:320px;display:flex;flex-direction:column;gap:10px}
+.sw{display:flex;gap:4px;flex-wrap:wrap}
+.sw span{font:10px ui-monospace,Consolas,monospace;padding:2px 5px;border-radius:4px;border:1px solid rgba(0,0,0,.1)}
+.dash{border-radius:var(--rad);background:var(--bg);color:var(--tx);padding:10px;font-size:12px;border:1px solid var(--bd)}
+.dash .ab{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.dash .kp{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.dash .kp div{background:var(--sf);border:1px solid var(--bd);border-radius:var(--rad);padding:7px}
+.dash .kp b{display:block;font-size:15px}
+.dash .kp small{color:var(--mu)}
+.dash table{width:100%;border-collapse:collapse;margin-top:8px;background:var(--sf);border-radius:var(--rad);overflow:hidden}
+.dash td,.dash th{padding:5px 7px;border-bottom:1px solid var(--bd);text-align:left;font-size:11.5px}
+.dash th{color:var(--mu);font-weight:600}
+.ctr{border-radius:var(--rad);background:var(--sf);color:var(--tx);font-size:12px;border:1px solid var(--bd);overflow:hidden}
+.ctr .sc{margin:8px;border:2px solid var(--pr);border-radius:var(--rad);padding:6px 8px}
+.ctr .ln{display:flex;justify-content:space-between;padding:5px 10px;border-bottom:1px solid var(--bd)}
+.ctr .tb{display:flex;justify-content:space-between;align-items:center;padding:8px 10px}
+
+/* 7A Calm professional: bg #F5F6F8, surface #FFFFFF, text #1F2937, muted #6B7280, border #E0E3E7, primary #1976D2, success #2E7D32, radius 4px, weight 400/600 */
+.d7a{--bg:#F5F6F8;--sf:#FFFFFF;--tx:#1F2937;--mu:#6B7280;--bd:#E0E3E7;--pr:#1976D2;--rad:4px}
+.d7a .tb{background:#F5F6F8}.d7a .tb b{font-size:20px;color:#1F2937}
+.d7a .pay{background:#1976D2;color:#fff;border-radius:4px;padding:5px 12px;font-weight:600}
+/* 7B Bold retail: bg #FFFFFF, surface #FFFFFF, ink #111111, muted #4B4B4B, border #111111, primary red #D7141A, block yellow #FFD100, radius 0, weight 800 */
+.d7b{--bg:#FFFFFF;--sf:#FFFFFF;--tx:#111111;--mu:#4B4B4B;--bd:#111111;--pr:#D7141A;--rad:0px}
+.d7b .dash,.d7b .ctr{border-width:2px}
+.d7b .ab{background:#D7141A;color:#fff;margin:-10px -10px 8px;padding:8px 10px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}
+.d7b .kp div:first-child{background:#FFD100;border-color:#111}
+.d7b .kp b{font-weight:900;font-size:17px}
+.d7b th{background:#111;color:#fff!important;text-transform:uppercase;font-size:10.5px!important}
+.d7b .tb{background:#111;color:#fff}.d7b .tb b{font-size:24px;font-weight:900;color:#FFD100}
+.d7b .pay{background:#D7141A;color:#fff;padding:6px 14px;font-weight:900;text-transform:uppercase}
+.d7b .ln{font-weight:700}
+/* 7C Warm & friendly: bg #FAF6F0, surface #FFFDF9, text #3D3229, muted #8A7B6C, border #EADFD2, primary teal #0F8B7D, accent amber #E9A23B, radius 14px, weight 500/700 */
+.d7c{--bg:#FAF6F0;--sf:#FFFDF9;--tx:#3D3229;--mu:#8A7B6C;--bd:#EADFD2;--pr:#0F8B7D;--rad:14px}
+.d7c .kp div:first-child{background:#E3F3F0;border-color:#BFE2DC}
+.d7c .tb{background:#E3F3F0}.d7c .tb b{font-size:21px;color:#0B6B60}
+.d7c .pay{background:#0F8B7D;color:#fff;border-radius:999px;padding:6px 16px;font-weight:700}
+.d7c .ab .pill{background:#FBE8C8;color:#7A4E0B;border-radius:999px;padding:1px 9px;font-size:11px}
+/* 7D Modern minimal: bg #FFFFFF, surface #FFFFFF, text #0A0A0A, muted #8A8A8A, hairline #EDEDED, single accent #5B3DF5, radius 8px, weight 300/500, generous spacing */
+.d7d{--bg:#FFFFFF;--sf:#FFFFFF;--tx:#0A0A0A;--mu:#8A8A8A;--bd:#EDEDED;--pr:#5B3DF5;--rad:8px}
+.d7d .dash{padding:16px}
+.d7d .kp div{border:0;padding:4px 0}
+.d7d .kp b{font-weight:300;font-size:20px;letter-spacing:-.02em}
+.d7d .kp div:first-child b{color:#5B3DF5}
+.d7d td,.d7d th{padding:7px 0}
+.d7d .ln{padding:8px 14px}
+.d7d .tb{padding:12px 14px}.d7d .tb b{font-weight:300;font-size:26px;letter-spacing:-.02em}
+.d7d .pay{color:#5B3DF5;border:1px solid #5B3DF5;border-radius:8px;padding:5px 14px;font-weight:500}
+
+/* ---------- Light/dark (section 8) ---------- */
+/* Light: bg #FFFFFF, surface #F5F6F8, text #1F2937, muted #6B7280, border #E0E3E7, primary #1976D2 */
+/* Dark:  bg #121417, surface #1C1F24, text #E6E8EB, muted #9AA1AC, border #2D323A, primary #64B5F6 */
+.mini{border-radius:6px;overflow:hidden;font-size:11.5px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);min-width:150px;flex:1}
+.mini .mt{display:flex;justify-content:space-between;padding:5px 8px;background:var(--sf);border-bottom:1px solid var(--bd);font-size:10.5px}
+.mini .ml{display:flex;justify-content:space-between;padding:4px 8px;border-bottom:1px solid var(--bd)}
+.mini .mtot{display:flex;justify-content:space-between;align-items:center;padding:6px 8px}
+.mini .mtot b{font-size:17px;color:var(--pr)}
+.mini .msc{margin:6px 8px;border:2px solid var(--pr);border-radius:4px;padding:3px 6px;color:var(--mu)}
+.mini .mk{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:7px}
+.mini .mk div{background:var(--sf);border:1px solid var(--bd);border-radius:4px;padding:5px}
+.mini .mk b{display:block;font-size:13px}
+.mini .mu{color:var(--mu)}
+.lt{--bg:#FFFFFF;--sf:#F5F6F8;--tx:#1F2937;--mu:#6B7280;--bd:#E0E3E7;--pr:#1976D2}
+.dk{--bg:#121417;--sf:#1C1F24;--tx:#E6E8EB;--mu:#9AA1AC;--bd:#2D323A;--pr:#64B5F6}
+.pair{display:flex;gap:8px;min-width:330px}
+.pl{font-size:10.5px;font-weight:700;color:#4A5262;margin-bottom:3px}
+.tog{display:inline-flex;border:1px solid var(--bd);border-radius:999px;overflow:hidden;font-size:9.5px}
+.tog span{padding:1px 6px}
+.tog span.on{background:var(--pr);color:var(--bg)}
+
+/* ---------- Stakes (section 9) ---------- */
+.ic{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:10px 0}
+</style>
+</head>
+<body>
+<nav class="top" aria-label="Sections"><div class="in">
+<b>[Product name] · UX options</b>
+<a href="#s1">1 Counter hardware</a>
+<a href="#s2">2 Counter density</a>
+<a href="#s3">3 Cash payment</a>
+<a href="#s4">4 Finding an item</a>
+<a href="#s5">5 Brand</a>
+<a href="#s6">6 Owner's phone</a>
+<a href="#s7">7 Look &amp; feel</a>
+<a href="#s8">8 Light / dark</a>
+<a href="#s9">9 Stakes</a>
+<a href="#answer">How to answer</a>
+</div></nav>
+
+<main>
+<header class="intro">
+<h1>Options board 1: nine decisions before we draw the real screens</h1>
+<p>Every option below is a real candidate. None is marked as preferred. All examples use the fictional "Sample Mart" with Main Branch and Gulberg, PKR in whole rupees, and "[Product name]" where the product's name will go.</p>
+</header>
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+<h2><span class="n">1</span>What hardware and input does the Counter assume?</h2>
+<p class="why">This decides the size of every button, where focus sits, and whether a scan can ever be lost to a stray tap or click.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">1A</span>Keyboard + scanner only, non-touch ~15" (1366×768)</h3>
+<div class="mock"><div class="mon"><div class="scr">
+<div class="cs-top"><span>Sample Mart · Main Branch · Counter C1</span><span class="st"><span>Nadia (1004)</span><span>Shift open 14:02</span><span><i class="dot"></i>Online</span></span></div>
+<div class="cs-body"><div class="cs-main">
+<div class="scan focus"><span>Scan or type Barcode<span class="caret"></span></span><span>Enter to add</span></div>
+<table class="cart"><tr><th>#</th><th>Product</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr>
+<tr><td>1</td><td>Nestlé Milkpak 1L</td><td class="r">2</td><td class="r">290</td><td class="r">580</td></tr>
+<tr><td>2</td><td>Shan Biryani Masala</td><td class="r">1</td><td class="r">140</td><td class="r">140</td></tr>
+<tr><td>3</td><td>Lipton Yellow Label 95g</td><td class="r">1</td><td class="r">360</td><td class="r">360</td></tr>
+<tr><td>4</td><td><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span></td><td class="r">1</td><td class="r">220</td><td class="r">220</td></tr>
+<tr class="sel"><td>5</td><td>Dawn Bread Large</td><td class="r">1</td><td class="r">200</td><td class="r">200</td></tr>
+</table></div>
+<div class="cs-side"><span class="lbl">Items</span><b>6 Units · 5 lines</b><span class="lbl">Total</span><span class="bigtot">Rs 1,500</span><span class="btn pri">F9 Pay</span></div></div>
+<div class="fbar"><span><b>F2</b> Qty</span><span><b>F3</b> Search</span><span><b>F4</b> Type Barcode</span><span><b>Del</b> Remove line</span><span><b>F8</b> Return</span><span><b>F9</b> Pay</span><span><b>F11</b> Reprint</span><span><b>F12</b> Close Shift</span></div>
+</div></div><div class="stand"></div></div>
+<ul>
+<li><span class="tg">Gain</span>Focus can be locked to the scan field, so a scan is never typed into the wrong place.</li>
+<li><span class="tg">Gain</span>Cheapest hardware; works with the till PCs Marts already own.</li>
+<li><span class="tg">Cost</span>New Cashiers must learn F-keys; the hint bar has to be visible on every screen.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">1B</span>Touchscreen ~15"</h3>
+<div class="mock"><div class="mon"><div class="scr">
+<div class="cs-top"><span>Sample Mart · Main Branch · C1</span><span class="st"><span>Nadia</span><span><i class="dot"></i>Online</span></span></div>
+<div class="t-body"><div style="overflow:hidden">
+<div class="t-line"><span class="nm">Nestlé Milkpak 1L<br><small style="color:#6B7385">Rs 290 each</small></span><span class="t-q"><i>−</i><b>2</b><i>+</i></span><b style="width:52px;text-align:right">580</b><i style="font-style:normal;color:#A12622;font-size:16px">✕</i></div>
+<div class="t-line"><span class="nm">Shan Biryani Masala<br><small style="color:#6B7385">Rs 140 each</small></span><span class="t-q"><i>−</i><b>1</b><i>+</i></span><b style="width:52px;text-align:right">140</b><i style="font-style:normal;color:#A12622;font-size:16px">✕</i></div>
+<div class="t-line"><span class="nm">Lipton Yellow Label 95g<br><small style="color:#6B7385">Rs 360 each</small></span><span class="t-q"><i>−</i><b>1</b><i>+</i></span><b style="width:52px;text-align:right">360</b><i style="font-style:normal;color:#A12622;font-size:16px">✕</i></div>
+<div class="t-line"><span class="nm"><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><br><small style="color:#6B7385">Rs 220 each</small></span><span class="t-q"><i>−</i><b>1</b><i>+</i></span><b style="width:52px;text-align:right">220</b><i style="font-style:normal;color:#A12622;font-size:16px">✕</i></div>
+<div class="t-tabs"><span>Search</span><span>Return</span><span>Reprint</span><span>Close Shift</span></div>
+</div>
+<div class="cs-side" style="gap:5px"><span class="lbl">Type Barcode / Qty</span><div class="scan" style="font-size:13px;color:#1D2330">89610…</div>
+<div class="pad"><i>7</i><i>8</i><i>9</i><i>4</i><i>5</i><i>6</i><i>1</i><i>2</i><i>3</i><i>⌫</i><i>0</i><i>OK</i></div>
+<span class="lbl">Total</span><span class="bigtot">Rs 1,300</span><div class="t-pay">PAY</div></div></div>
+</div></div><div class="stand"></div></div>
+<ul>
+<li><span class="tg">Gain</span>Fast to learn; quantity and remove are one tap on the line.</li>
+<li><span class="tg">Cost</span>Touch screens cost more and must be sourced per Counter; hardware models are still unknown.</li>
+<li><span class="tg">Cost</span>A tap can move focus off the scan field; needs a rule that every scan returns to the cart regardless.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">1C</span>Keyboard-primary, mouse also usable (hybrid)</h3>
+<div class="mock"><div class="mon"><div class="scr">
+<div class="cs-top"><span>Sample Mart · Main Branch · Counter C1</span><span class="st"><span>Nadia (1004)</span><span><i class="dot"></i>Online</span></span></div>
+<div class="cs-body"><div class="cs-main">
+<div class="scan focus"><span>Scan or type Barcode<span class="caret"></span></span><span class="btn" style="padding:0 6px;font-weight:400">Search (F3)</span></div>
+<table class="cart"><tr><th>Product</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th><th></th></tr>
+<tr><td>Nestlé Milkpak 1L</td><td class="r"><span class="btn" style="padding:0 5px">2 ▾</span></td><td class="r">290</td><td class="r">580</td><td class="r" style="color:#A12622">✕</td></tr>
+<tr><td>Shan Biryani Masala</td><td class="r"><span class="btn" style="padding:0 5px">1 ▾</span></td><td class="r">140</td><td class="r">140</td><td class="r" style="color:#A12622">✕</td></tr>
+<tr class="sel"><td>Lipton Yellow Label 95g <span style="font-size:13px">↖</span></td><td class="r"><span class="btn" style="padding:0 5px">1 ▾</span></td><td class="r">360</td><td class="r">360</td><td class="r" style="color:#A12622">✕</td></tr>
+<tr><td><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span></td><td class="r"><span class="btn" style="padding:0 5px">1 ▾</span></td><td class="r">220</td><td class="r">220</td><td class="r" style="color:#A12622">✕</td></tr>
+</table>
+<div style="font-size:10px;color:#6B7385">After any click, focus returns to the scan field.</div>
+</div>
+<div class="cs-side"><span class="lbl">Total</span><span class="bigtot">Rs 1,300</span><span class="btn pri">Pay <small>(F9)</small></span><span class="btn">Return <small>(F8)</small></span><span class="btn">Reprint <small>(F11)</small></span><span class="btn">Close Shift <small>(F12)</small></span></div></div>
+</div></div><div class="stand"></div></div>
+<ul>
+<li><span class="tg">Gain</span>Experienced Cashiers stay on keys; new ones can click labelled buttons that show their shortcut.</li>
+<li><span class="tg">Gain</span>Maps directly onto standard MUI buttons and tables.</li>
+<li><span class="tg">Cost</span>Two ways to do everything means more states to test, and focus rules must be strict.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+<h2><span class="n">2</span>How dense is the Counter sale screen?</h2>
+<p class="why">Busy supermarket baskets can run to many lines; the Cashier and customer both need to see the total at a glance.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">2A</span>Dense supermarket till</h3>
+<div class="mock"><div class="till d2a">
+<div class="cs-top"><span>Counter C1 · Nadia (1004)</span><span class="st"><span>Receipt C1-000124</span><span><i class="dot"></i>Online · synced 14:31</span></span></div>
+<table class="cart"><tr><th>#</th><th>Barcode</th><th>Product</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr>
+<tr><td>1</td><td>8961014000117</td><td>Nestlé Milkpak 1L</td><td class="r">2</td><td class="r">290</td><td class="r">580</td></tr>
+<tr><td>2</td><td>8964000123456</td><td>Shan Biryani Masala</td><td class="r">1</td><td class="r">140</td><td class="r">140</td></tr>
+<tr><td>3</td><td>8961008200951</td><td>Lipton Yellow Label 95g</td><td class="r">1</td><td class="r">360</td><td class="r">360</td></tr>
+<tr><td>4</td><td>2000000000107</td><td><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span></td><td class="r">1</td><td class="r">220</td><td class="r">220</td></tr>
+<tr><td>5</td><td>8964001510026</td><td>Dawn Bread Large</td><td class="r">1</td><td class="r">200</td><td class="r">200</td></tr>
+<tr><td>6</td><td>8964000960013</td><td>Tapal Danedar 190g</td><td class="r">1</td><td class="r">420</td><td class="r">420</td></tr>
+<tr><td>7</td><td>8961100300084</td><td>National Salt 800g</td><td class="r">1</td><td class="r">60</td><td class="r">60</td></tr>
+<tr><td>8</td><td>8961003500028</td><td>Dalda Cooking Oil 1L</td><td class="r">1</td><td class="r">560</td><td class="r">560</td></tr>
+<tr><td>9</td><td>8964000601015</td><td>Sooper Biscuit</td><td class="r">3</td><td class="r">50</td><td class="r">150</td></tr>
+<tr><td>10</td><td>8961008612342</td><td>Colgate 100g</td><td class="r">1</td><td class="r">230</td><td class="r">230</td></tr>
+<tr class="sel"><td>11</td><td>8961008701220</td><td>Knorr Noodles</td><td class="r">2</td><td class="r">70</td><td class="r">140</td></tr>
+</table>
+<div class="foot"><div><span class="lbl">Lines</span><br><b>11</b></div><div><span class="lbl">Units</span><br><b>14</b></div><div><span class="lbl">Last scan</span><br><b>Knorr Noodles</b></div><div style="text-align:right"><span class="lbl">Total</span><br><b style="font-size:20px">Rs 3,060</b></div></div>
+</div></div>
+<ul>
+<li><span class="tg">Gain</span>Whole basket visible without scrolling; Barcode column helps spot a wrong item.</li>
+<li><span class="tg">Cost</span>Small type is harder to read at arm's length or in poor light.</li>
+<li><span class="tg">Cost</span>Total competes with lots of other numbers.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">2B</span>Big and simple</h3>
+<div class="mock"><div class="till d2b">
+<div class="cs-top"><span>Counter C1 · Nadia</span><span><i class="dot"></i>Online</span></div>
+<div style="text-align:center;font-size:12px;color:#6B7385;padding:4px">▲ 8 more lines above</div>
+<div class="line"><span>Sooper Biscuit<small>3 × Rs 50</small></span><b>150</b></div>
+<div class="line"><span>Colgate 100g<small>1 × Rs 230</small></span><b>230</b></div>
+<div class="line" style="background:#E8F1FB"><span>Knorr Noodles<small>2 × Rs 70</small></span><b>140</b></div>
+<div class="tot"><span>TOTAL<br><small style="opacity:.75">14 Units</small></span><b>Rs 3,060</b></div>
+</div></div>
+<ul>
+<li><span class="tg">Gain</span>Total readable from across the counter; very low reading effort.</li>
+<li><span class="tg">Cost</span>Only the last few lines show, so checking a large basket means scrolling.</li>
+<li><span class="tg">Gain</span>Forgiving for new or older Cashiers.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">2C</span>Balanced</h3>
+<div class="mock"><div class="till d2c">
+<div class="cs-top"><span>Counter C1 · Nadia (1004)</span><span><i class="dot"></i>Online</span></div>
+<div style="font-size:11px;color:#6B7385;padding:3px 8px">5 earlier lines ▲</div>
+<table class="cart"><tr><th>Product</th><th class="r">Qty</th><th class="r">Price</th><th class="r">Total</th></tr>
+<tr><td>Tapal Danedar 190g</td><td class="r">1</td><td class="r">420</td><td class="r">420</td></tr>
+<tr><td>National Salt 800g</td><td class="r">1</td><td class="r">60</td><td class="r">60</td></tr>
+<tr><td>Dalda Cooking Oil 1L</td><td class="r">1</td><td class="r">560</td><td class="r">560</td></tr>
+<tr><td>Sooper Biscuit</td><td class="r">3</td><td class="r">50</td><td class="r">150</td></tr>
+<tr><td>Colgate 100g</td><td class="r">1</td><td class="r">230</td><td class="r">230</td></tr>
+<tr class="sel"><td>Knorr Noodles</td><td class="r">2</td><td class="r">70</td><td class="r">140</td></tr>
+</table>
+<div class="tot"><span style="color:#4A5262">11 lines · 14 Units</span><b style="font-size:32px">Rs 3,060</b></div>
+</div></div>
+<ul>
+<li><span class="tg">Gain</span>Roughly six lines plus a clearly dominant total.</li>
+<li><span class="tg">Cost</span>Neither the fullest view nor the easiest to read from a distance.</li>
+<li><span class="tg">Gain</span>Sits close to MUI default table sizing.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+<h2><span class="n">3</span>What happens at the cash payment step?</h2>
+<p class="why">The PRD only records payment type; whether the Counter also works out change affects speed, mistakes and the Shift cash count.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">3A</span>No tendered amount: pick Cash or Card, finish</h3>
+<div class="mock"><div class="dim"><div class="dlg">
+<h4><span>Payment</span><span class="kbd">Esc</span></h4>
+<div style="color:#6B7385">Total</div><div class="amt">Rs 1,210</div>
+<div class="pt" style="margin-top:10px"><div class="on">Cash<br><span class="kbd">F1</span></div><div>Card<br><span class="kbd">F2</span></div></div>
+<div class="hint">Card is taken on the separate terminal. Press <span class="kbd">Enter</span> to save and print receipt C1-000123.</div>
+</div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Fewest keystrokes; exactly what the PRD specifies today.</li>
+<li><span class="tg">Cost</span>Cashier works out change in their head; errors only show at Shift close.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">3B</span>Cashier types cash received; Change due shown large</h3>
+<div class="mock"><div class="dim"><div class="dlg">
+<h4><span>Cash payment</span><span class="kbd">Esc</span></h4>
+<div style="display:flex;justify-content:space-between"><span style="color:#6B7385">Total</span><b style="font-size:18px">Rs 1,210</b></div>
+<div style="color:#6B7385;margin:8px 0 3px">Cash received</div>
+<div class="field"><span>Rs 2,000<span class="caret" style="height:18px"></span></span><small>Enter to finish</small></div>
+<div class="chg"><span>Change due</span><b>Rs 790</b></div>
+</div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Change is never miscounted; one more field to type.</li>
+<li><span class="tg">Cost</span>Adds a step on every cash Sale, even exact-money ones (Enter on empty could mean exact).</li>
+<li><span class="tg">Gain</span>Received amount could be stored for later checks.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">3C</span>Quick-cash buttons plus typed amount and change due</h3>
+<div class="mock"><div class="dim"><div class="dlg">
+<h4><span>Cash payment</span><span class="kbd">Esc</span></h4>
+<div style="display:flex;justify-content:space-between"><span style="color:#6B7385">Total</span><b style="font-size:18px">Rs 1,210</b></div>
+<div class="qc"><div>Exact<small>1,210 · F1</small></div><div class="dis">Rs 500<small>below total</small></div><div class="dis">Rs 1,000<small>below total</small></div><div class="on">Rs 5,000<small>F4</small></div></div>
+<div class="field" style="font-size:16px"><span>Rs 5,000</span><small>or type amount</small></div>
+<div class="chg"><span>Change due</span><b>Rs 3,790</b></div>
+</div></div></div>
+<ul>
+<li><span class="tg">Gain</span>One key for the common notes; typing still possible for odd amounts.</li>
+<li><span class="tg">Cost</span>Fixed note buttons below the total are dead; they could instead add up (500 + 1,000) at the cost of more logic.</li>
+<li><span class="tg">Cost</span>Busiest dialog of the three.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+<h2><span class="n">4</span>How does a Cashier find an item when the Barcode won't scan?</h2>
+<p class="why">Torn labels and loose goods happen every Shift; name search must return first results in under 500 ms across 500,000 Products.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">4A</span>F-key search overlay with type-ahead list</h3>
+<div class="mock"><div class="dim"><div class="dlg">
+<h4><span>Search Products</span><span><span class="kbd">F3</span> <span class="kbd">Esc</span></span></h4>
+<div class="field" style="font-size:15px;font-weight:400"><span>milk<span class="caret"></span></span><small>5 results</small></div>
+<div class="res">
+<div class="hl"><span>Nestlé Milkpak 1L</span><b>Rs 290</b></div>
+<div><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><b>Rs 220</b></div>
+<div><span>Nestlé Milkpak 250ml</span><b>Rs 85</b></div>
+<div><span>Olpers Milk 1L</span><b>Rs 300</b></div>
+<div><span>Nestlé Milkpak 1L <small>× 12 Carton</small></span><b>Rs 3,480</b></div>
+</div>
+<div class="hint"><span class="kbd">↑</span> <span class="kbd">↓</span> move · <span class="kbd">Enter</span> add · type a number first for qty (e.g. 2*milk)</div>
+</div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Scan field stays dedicated to Barcodes; search is clearly a separate mode.</li>
+<li><span class="tg">Cost</span>One extra key to open and close the overlay.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">4B</span>One field accepts Barcode or name; results drop down inline</h3>
+<div class="mock"><div class="till" style="min-width:360px;padding:10px;font-size:12px">
+<div class="scan focus" style="font-size:13px"><span>milk<span class="caret"></span></span><span>Barcode or name</span></div>
+<div class="res" style="margin-top:2px;box-shadow:0 6px 16px rgba(0,0,0,.15)">
+<div class="hl"><span>Nestlé Milkpak 1L</span><b>Rs 290</b></div>
+<div><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><b>Rs 220</b></div>
+<div><span>Nestlé Milkpak 250ml</span><b>Rs 85</b></div>
+</div>
+<table class="cart" style="margin-top:8px;opacity:.5"><tr><td>Shan Biryani Masala</td><td class="r">1</td><td class="r">140</td></tr><tr><td>Lipton Yellow Label 95g</td><td class="r">1</td><td class="r">360</td></tr></table>
+<div class="hint">Digits then Enter = Barcode lookup. Letters = name search. Typed Barcodes are recorded as typed-in.</div>
+</div></div>
+<ul>
+<li><span class="tg">Gain</span>No mode to remember; one place to look.</li>
+<li><span class="tg">Cost</span>A scanner firing while the list is open must still win; needs careful timing rules.</li>
+<li><span class="tg">Cost</span>Names that start with digits (e.g. "7Up") blur the rule.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">4C</span>Quick-pick grid of common unbarcoded items, plus search</h3>
+<div class="mock"><div class="till" style="min-width:360px;padding:10px;font-size:12px">
+<div style="display:flex;justify-content:space-between;margin-bottom:6px"><b>Quick pick</b><span class="scan" style="padding:2px 8px;font-size:11px">Search (F3)…</span></div>
+<div class="qp">
+<div><b class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</b>Rs 220<span class="k">Alt+1</span></div>
+<div><b>Eggs 1 dozen</b>Rs 340<span class="k">Alt+2</span></div>
+<div><b>Dawn Bread Large</b>Rs 200<span class="k">Alt+3</span></div>
+<div><b>Naan</b>Rs 25<span class="k">Alt+4</span></div>
+<div><b class="ur" dir="rtl" lang="ur">دہی کھلا 1 کلو</b>Rs 240<span class="k">Alt+5</span></div>
+<div><b>Rusk loose 250g</b>Rs 150<span class="k">Alt+6</span></div>
+<div><b>Shopping bag</b>Rs 10<span class="k">Alt+7</span></div>
+<div style="border-style:dashed;color:#6B7385">Manager sets these</div>
+</div>
+</div></div>
+<ul>
+<li><span class="tg">Gain</span>Fastest for the same few loose items sold all day.</li>
+<li><span class="tg">Cost</span>Someone has to choose and maintain the grid per Branch (a new Manager screen).</li>
+<li><span class="tg">Cost</span>Still needs search for everything else.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+<h2><span class="n">5</span>Whose brand shows: the product's, the Mart's, or both?</h2>
+<p class="why">Sources are silent on branding; it shapes the app header, the printed receipt and whether we can sell to Marts that want their own look.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">5A</span>One product brand everywhere</h3>
+<div class="mock"><div class="bwrap">
+<div class="hdr" style="background:#1976D2;color:#fff"><span class="logo"><span class="lmark" style="background:#fff;color:#1976D2">P</span>[Product name]</span><span style="opacity:.85">Sample Mart · Main Branch</span></div>
+<div class="rcpt">
+<div class="c"><b>SAMPLE MART</b><br>Main Branch</div><hr>
+<div class="row"><span>16-10-2026 18:42</span><span>C1-000123</span></div>
+<div>Cashier: Nadia</div><hr>
+<div class="row"><span>Nestlé Milkpak 1L 1×290</span><span>290</span></div>
+<div class="row"><span>Shan Biryani Masala 1×140</span><span>140</span></div>
+<div class="row"><span>Lipton Yellow Label 1×360</span><span>360</span></div>
+<div class="row"><span><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span> 1×220</span><span>220</span></div>
+<div class="row"><span>Dawn Bread Large 1×200</span><span>200</span></div><hr>
+<div class="row"><b>TOTAL Rs</b><b>1,210</b></div>
+<div class="row"><span>Paid</span><span>Cash</span></div><hr>
+<div class="rlogo"><span class="lmark" style="background:#1976D2;color:#fff;width:16px;height:16px;font-size:9px">P</span>[Product name]</div>
+</div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Builds recognition for the product across every Mart.</li>
+<li><span class="tg">Cost</span>Some Owners may not want another company's logo on their receipts.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">5B</span>Co-brand: Mart prominent, small "powered by"</h3>
+<div class="mock"><div class="bwrap">
+<div class="hdr" style="background:#fff;border:1px solid #DDE1E7"><span class="logo"><span class="lmark" style="background:#7A1F2B;color:#fff">SM</span>Sample Mart <span style="font-weight:400;color:#6B7385">· Main Branch</span></span><span style="font-size:10px;color:#6B7385">powered by [Product name]</span></div>
+<div class="rcpt">
+<div class="rlogo" style="font-size:15px"><span class="lmark" style="background:#111;color:#fff;width:18px;height:18px;font-size:9px">SM</span>SAMPLE MART</div>
+<div class="c">Main Branch</div><hr>
+<div class="row"><span>16-10-2026 18:42</span><span>C1-000123</span></div>
+<div>Cashier: Nadia</div><hr>
+<div class="row"><span>Nestlé Milkpak 1L 1×290</span><span>290</span></div>
+<div class="row"><span>Shan Biryani Masala 1×140</span><span>140</span></div>
+<div class="row"><span>Lipton Yellow Label 1×360</span><span>360</span></div>
+<div class="row"><span><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span> 1×220</span><span>220</span></div>
+<div class="row"><span>Dawn Bread Large 1×200</span><span>200</span></div><hr>
+<div class="row"><b>TOTAL Rs</b><b>1,210</b></div>
+<div class="row"><span>Paid</span><span>Cash</span></div><hr>
+<div class="c" style="font-size:9px">powered by [Product name]</div>
+</div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Owner sees their shop first; product still gets a mention.</li>
+<li><span class="tg">Cost</span>Needs a Mart logo upload and receipt logo printing (logo support on the printer is unknown).</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">5C</span>Full white-label: only the Mart</h3>
+<div class="mock"><div class="bwrap">
+<div class="hdr" style="background:#7A1F2B;color:#fff"><span class="logo"><span class="lmark" style="background:#F4C430;color:#7A1F2B">SM</span>Sample Mart</span><span style="opacity:.85">Main Branch</span></div>
+<div class="rcpt">
+<div class="rlogo" style="font-size:15px"><span class="lmark" style="background:#111;color:#fff;width:18px;height:18px;font-size:9px">SM</span>SAMPLE MART</div>
+<div class="c">Main Branch</div><hr>
+<div class="row"><span>16-10-2026 18:42</span><span>C1-000123</span></div>
+<div>Cashier: Nadia</div><hr>
+<div class="row"><span>Nestlé Milkpak 1L 1×290</span><span>290</span></div>
+<div class="row"><span>Shan Biryani Masala 1×140</span><span>140</span></div>
+<div class="row"><span>Lipton Yellow Label 1×360</span><span>360</span></div>
+<div class="row"><span><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span> 1×220</span><span>220</span></div>
+<div class="row"><span>Dawn Bread Large 1×200</span><span>200</span></div><hr>
+<div class="row"><b>TOTAL Rs</b><b>1,210</b></div>
+<div class="row"><span>Paid</span><span>Cash</span></div><hr>
+<div class="c">Thank you for shopping</div>
+</div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Strongest for Owners who want the system to feel like their own.</li>
+<li><span class="tg">Cost</span>Per-Mart colour means every screen must stay readable with any colour picked (contrast checks).</li>
+<li><span class="tg">Cost</span>No product visibility for word-of-mouth growth.</li>
+</ul>
+<p class="cap" style="margin-top:8px">Receipts shown at about 80 mm; the real paper width is still to confirm.</p>
+</div>
+</div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+<h2><span class="n">6</span>What does the Owner see first on their phone?</h2>
+<p class="why">The phone is always read-only; the first screen sets what the Owner checks every day from away.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">6A</span>Today's sales totals and payment split</h3>
+<div class="mock"><div class="phone"><div class="ph-notch"></div>
+<div class="ph-bar"><b>Sample Mart</b><span class="ro">🔒 Read-only</span></div>
+<div class="ph-c">
+<div style="display:flex;justify-content:space-between;color:#6B7385;font-size:11.5px"><span>Today · all Branches ▾</span><span>updated 18:44</span></div>
+<div class="tile"><div style="color:#6B7385">Sales today</div><div class="v" style="font-size:26px">Rs 284,350</div><span style="color:#6B7385">412 Sales · Returns −Rs 2,180</span>
+<div class="split"><span style="width:71%;background:#1976D2"></span><span style="width:29%;background:#90CAF9"></span></div>
+<div style="display:flex;justify-content:space-between;font-size:11px"><span>■ Cash Rs 201,890</span><span style="color:#5B8FC7">■ Card Rs 82,460</span></div></div>
+<div class="tile"><div class="kv"><span>Main Branch</span><b>Rs 168,200</b></div><div class="kv"><span>Gulberg</span><b>Rs 116,150</b></div></div>
+<div class="tile"><div style="color:#6B7385;margin-bottom:2px">Sales by Cashier (A–Z)</div><div class="kv"><span>Ali</span><span>Rs 74,300</span></div><div class="kv"><span>Nadia</span><span>Rs 93,900</span></div><div class="kv"><span>Sara</span><span>Rs 116,150</span></div></div>
+</div>
+<div class="ph-tabs"><span class="on">Sales</span><span>Stock</span><span>Exceptions</span><span>Branches</span></div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Answers "how did we do today" in one look.</li>
+<li><span class="tg">Cost</span>Problems (negative stock, Returns) are one tap away and can be missed.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">6B</span>Exceptions Report summary first</h3>
+<div class="mock"><div class="phone"><div class="ph-notch"></div>
+<div class="ph-bar"><b>Exceptions Report</b><span class="ro">🔒 Read-only</span></div>
+<div class="ph-c">
+<div style="color:#6B7385;font-size:11.5px">Today · all Branches ▾</div>
+<div class="tile">
+<div class="kv"><span>Negative stock</span><span class="chip bad">7</span></div>
+<div class="kv"><span>Spot Count differences</span><span class="chip warn">2</span></div>
+<div class="kv"><span>Shift cash differences</span><span class="chip warn">1</span></div>
+<div class="kv"><span>Damaged Returns</span><span class="chip">3</span></div>
+<div class="kv"><span>Typed-in Barcodes</span><span class="chip">12</span></div>
+<div class="kv"><span>Parked events</span><span class="chip bad">1</span></div>
+<div class="kv"><span>Long-pending Returns</span><span class="chip ok">0</span></div>
+</div>
+<div class="tile"><div style="color:#6B7385;margin-bottom:2px">Returns per Cashier (A–Z)</div>
+<div class="kv"><span>Ali</span><span>1 accepted · 0 rejected</span></div>
+<div class="kv"><span>Nadia</span><span>4 accepted · 1 rejected</span></div>
+<div class="kv"><span>Sara</span><span>2 accepted · 0 pending</span></div></div>
+<div style="font-size:11px;color:#6B7385">Sales today Rs 284,350 →</div>
+</div>
+<div class="ph-tabs"><span>Sales</span><span>Stock</span><span class="on">Exceptions</span><span>Branches</span></div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Puts the things that need a conversation with a Manager up front (as in UJ-3).</li>
+<li><span class="tg">Cost</span>Can feel like a list of problems on a normal day; counts need care so they don't read as blame.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">6C</span>Branch list with today's total and Sync status</h3>
+<div class="mock"><div class="phone"><div class="ph-notch"></div>
+<div class="ph-bar"><b>Branches</b><span class="ro">🔒 Read-only</span></div>
+<div class="ph-c">
+<div class="tile"><div style="display:flex;justify-content:space-between"><b>Main Branch</b><span class="chip ok">All synced</span></div><div class="v">Rs 168,200</div>
+<div style="font-size:11px;color:#6B7385">C1 synced 18:43 · C2 synced 18:42 · C3 synced 18:44</div></div>
+<div class="tile" style="border-color:#F3C98B"><div style="display:flex;justify-content:space-between"><b>Gulberg</b><span class="chip warn">1 Counter offline</span></div><div class="v">Rs 116,150</div>
+<div style="font-size:11px;color:#6B7385">C1 synced 18:44 · <b style="color:#8A4B00">C2 last Sync 17:57, 6 unsynced Sales</b></div>
+<div style="font-size:11px;color:#6B7385">Total may rise when C2 reconnects.</div></div>
+<div class="tile" style="background:#F7F8FA"><div class="kv"><span>All Branches</span><b>Rs 284,350</b></div></div>
+</div>
+<div class="ph-tabs"><span>Sales</span><span>Stock</span><span>Exceptions</span><span class="on">Branches</span></div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Explains up front why a number might be low (an offline Counter).</li>
+<li><span class="tg">Cost</span>Less detail per Branch; payment split and exceptions sit deeper.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">6D</span>Low and negative stock first</h3>
+<div class="mock"><div class="phone"><div class="ph-notch"></div>
+<div class="ph-bar"><b>Stock</b><span class="ro">🔒 Read-only</span></div>
+<div class="ph-c">
+<div style="color:#6B7385;font-size:11.5px">All Branches ▾</div>
+<div class="tile"><div style="font-weight:700;color:#A12622;margin-bottom:2px">Negative stock · 7</div>
+<div class="kv"><span>Nestlé Milkpak 1L<br><small style="color:#6B7385">Gulberg</small></span><b style="color:#A12622">−4 Units</b></div>
+<div class="kv"><span><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><br><small style="color:#6B7385">Main Branch</small></span><b style="color:#A12622">−2 Units</b></div>
+<div style="font-size:11px;color:#1976D2">5 more</div></div>
+<div class="tile"><div style="font-weight:700;color:#8A4B00;margin-bottom:2px">Low stock · 18</div>
+<div class="kv"><span>Shan Biryani Masala<br><small style="color:#6B7385">Main Branch · reorder at 12</small></span><b>6 Units</b></div>
+<div class="kv"><span>Lipton Yellow Label 95g<br><small style="color:#6B7385">Gulberg · reorder at 10</small></span><b>4 Units</b></div>
+<div style="font-size:11px;color:#1976D2">16 more</div></div>
+</div>
+<div class="ph-tabs"><span>Sales</span><span class="on">Stock</span><span>Exceptions</span><span>Branches</span></div></div></div>
+<ul>
+<li><span class="tg">Gain</span>Good for Owners who buy stock themselves.</li>
+<li><span class="tg">Cost</span>Sales figures move one tap away; may not fit Owners who mainly track takings.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+<h2><span class="n">7</span>Overall look and feel</h2>
+<p class="why">One visual personality across the Manager/Owner web app and the Counter; hex values are in the page's style comments.</p>
+<div class="opts">
+
+<div class="card d7a">
+<h3><span class="oid">7A</span>Calm professional</h3>
+<div class="mock"><div class="dir">
+<div class="sw"><span style="background:#F5F6F8">#F5F6F8</span><span style="background:#FFFFFF">#FFFFFF</span><span style="background:#1F2937;color:#fff">#1F2937</span><span style="background:#1976D2;color:#fff">#1976D2</span><span style="background:#E0E3E7">#E0E3E7</span></div>
+<div class="dash"><div class="ab"><b>Dashboard · Main Branch</b><span style="color:#6B7280">Today ▾</span></div>
+<div class="kp"><div><small>Sales</small><b>Rs 168,200</b></div><div><small>Cash</small><b>Rs 121,500</b></div><div><small>Card</small><b>Rs 46,700</b></div></div>
+<table><tr><th>Counter</th><th>Last Sync</th><th>Sales</th></tr><tr><td>C1</td><td>18:43</td><td>Rs 61,300</td></tr><tr><td>C2</td><td>18:42</td><td>Rs 57,850</td></tr></table></div>
+<div class="ctr"><div class="sc">Scan or type Barcode</div><div class="ln"><span>Nestlé Milkpak 1L ×2</span><span>580</span></div><div class="ln"><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><span>220</span></div><div class="tb"><b>Rs 800</b><span class="pay">Pay F9</span></div></div>
+</div></div>
+<ul><li><span class="tg">Gain</span>Closest to MUI defaults; least custom styling to build and maintain.</li><li><span class="tg">Cost</span>Looks like many other business tools; little personality.</li></ul>
+</div>
+
+<div class="card d7b">
+<h3><span class="oid">7B</span>Bold retail</h3>
+<div class="mock"><div class="dir">
+<div class="sw"><span style="background:#111;color:#fff">#111111</span><span style="background:#D7141A;color:#fff">#D7141A</span><span style="background:#FFD100">#FFD100</span><span style="background:#fff">#FFFFFF</span></div>
+<div class="dash"><div class="ab"><span>Dashboard · Main Branch</span><span>Today ▾</span></div>
+<div class="kp"><div><small>Sales</small><b>Rs 168,200</b></div><div><small>Cash</small><b>Rs 121,500</b></div><div><small>Card</small><b>Rs 46,700</b></div></div>
+<table><tr><th>Counter</th><th>Last Sync</th><th>Sales</th></tr><tr><td>C1</td><td>18:43</td><td>Rs 61,300</td></tr><tr><td>C2</td><td>18:42</td><td>Rs 57,850</td></tr></table></div>
+<div class="ctr"><div class="sc" style="border-width:3px;font-weight:700">SCAN OR TYPE BARCODE</div><div class="ln"><span>Nestlé Milkpak 1L ×2</span><span>580</span></div><div class="ln"><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><span>220</span></div><div class="tb"><b>Rs 800</b><span class="pay">Pay F9</span></div></div>
+</div></div>
+<ul><li><span class="tg">Gain</span>Very legible at the till; feels like a supermarket.</li><li><span class="tg">Cost</span>Red is also the natural error colour, so warnings need a separate treatment.</li><li><span class="tg">Cost</span>Heavy on long Manager sessions (Deliveries, Products).</li></ul>
+</div>
+
+<div class="card d7c">
+<h3><span class="oid">7C</span>Warm and friendly</h3>
+<div class="mock"><div class="dir">
+<div class="sw"><span style="background:#FAF6F0">#FAF6F0</span><span style="background:#3D3229;color:#fff">#3D3229</span><span style="background:#0F8B7D;color:#fff">#0F8B7D</span><span style="background:#E9A23B">#E9A23B</span><span style="background:#EADFD2">#EADFD2</span></div>
+<div class="dash"><div class="ab"><b>Good evening, Hamza</b><span class="pill">Main Branch</span></div>
+<div class="kp"><div><small>Sales today</small><b>Rs 168,200</b></div><div><small>Cash</small><b>Rs 121,500</b></div><div><small>Card</small><b>Rs 46,700</b></div></div>
+<table><tr><th>Counter</th><th>Last Sync</th><th>Sales</th></tr><tr><td>C1</td><td>18:43</td><td>Rs 61,300</td></tr><tr><td>C2</td><td>18:42</td><td>Rs 57,850</td></tr></table></div>
+<div class="ctr"><div class="sc">Scan or type Barcode</div><div class="ln"><span>Nestlé Milkpak 1L ×2</span><span>580</span></div><div class="ln"><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><span>220</span></div><div class="tb"><b>Rs 800</b><span class="pay">Pay F9</span></div></div>
+</div></div>
+<ul><li><span class="tg">Gain</span>Approachable for staff new to computers; soft on the eyes.</li><li><span class="tg">Cost</span>Rounded shapes take more space, which hurts dense lists.</li><li><span class="tg">Cost</span>Warm beige can look dull on cheap monitors.</li></ul>
+</div>
+
+<div class="card d7d">
+<h3><span class="oid">7D</span>Modern minimal</h3>
+<div class="mock"><div class="dir">
+<div class="sw"><span style="background:#fff">#FFFFFF</span><span style="background:#0A0A0A;color:#fff">#0A0A0A</span><span style="background:#8A8A8A;color:#fff">#8A8A8A</span><span style="background:#5B3DF5;color:#fff">#5B3DF5</span><span style="background:#EDEDED">#EDEDED</span></div>
+<div class="dash"><div class="ab"><span style="font-weight:500">Main Branch</span><span style="color:#8A8A8A">Today</span></div>
+<div class="kp"><div><small>Sales</small><b>Rs 168,200</b></div><div><small>Cash</small><b>Rs 121,500</b></div><div><small>Card</small><b>Rs 46,700</b></div></div>
+<table><tr><th>Counter</th><th>Last Sync</th><th>Sales</th></tr><tr><td>C1</td><td>18:43</td><td>Rs 61,300</td></tr><tr><td>C2</td><td>18:42</td><td>Rs 57,850</td></tr></table></div>
+<div class="ctr"><div class="sc" style="border-width:1px">Scan or type Barcode</div><div class="ln"><span>Nestlé Milkpak 1L ×2</span><span>580</span></div><div class="ln"><span class="ur" dir="rtl" lang="ur">دودھ کھلا 1 کلو</span><span>220</span></div><div class="tb"><b>Rs 800</b><span class="pay">Pay F9</span></div></div>
+</div></div>
+<ul><li><span class="tg">Gain</span>Feels current and premium; a good base for white-label.</li><li><span class="tg">Cost</span>Thin type and grey text risk failing contrast on low-end screens.</li><li><span class="tg">Cost</span>Lots of white space fits fewer cart lines.</li></ul>
+</div>
+</div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+<h2><span class="n">8</span>Light mode, dark mode, or both?</h2>
+<p class="why">Dark themes double the colour work and testing; Counters may sit under bright shop lights or in dim evening corners.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">8A</span>Light only</h3>
+<div class="mock"><div class="pair">
+<div style="flex:1"><div class="pl">Counter</div><div class="mini lt"><div class="mt"><span>C1 · Nadia</span><span><i class="dot"></i>Online</span></div><div class="msc">Scan or type Barcode</div><div class="ml"><span>Nestlé Milkpak 1L</span><span>290</span></div><div class="ml"><span>Dawn Bread Large</span><span>200</span></div><div class="mtot"><span class="mu">Total</span><b>Rs 490</b></div></div></div>
+<div style="flex:1"><div class="pl">Manager / Owner</div><div class="mini lt"><div class="mt"><span>Main Branch</span><span>Today</span></div><div class="mk"><div><span class="mu">Sales</span><b>168,200</b></div><div><span class="mu">Negative stock</span><b>7</b></div></div></div></div>
+</div></div>
+<ul><li><span class="tg">Gain</span>One palette to build, test and document.</li><li><span class="tg">Cost</span>No option for staff working long evening Shifts in low light.</li></ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">8B</span>Light and dark with a user toggle</h3>
+<div class="mock"><div class="pair">
+<div style="flex:1"><div class="pl">Counter · light</div><div class="mini lt"><div class="mt"><span>C1 · Nadia</span><span class="tog"><span class="on">Light</span><span>Dark</span></span></div><div class="msc">Scan or type Barcode</div><div class="ml"><span>Nestlé Milkpak 1L</span><span>290</span></div><div class="ml"><span>Dawn Bread Large</span><span>200</span></div><div class="mtot"><span class="mu">Total</span><b>Rs 490</b></div></div></div>
+<div style="flex:1"><div class="pl">Counter · dark</div><div class="mini dk"><div class="mt"><span>C1 · Nadia</span><span class="tog"><span>Light</span><span class="on">Dark</span></span></div><div class="msc">Scan or type Barcode</div><div class="ml"><span>Nestlé Milkpak 1L</span><span>290</span></div><div class="ml"><span>Dawn Bread Large</span><span>200</span></div><div class="mtot"><span class="mu">Total</span><b>Rs 490</b></div></div></div>
+</div></div>
+<p class="cap">Same toggle in the Manager/Owner app; choice remembered per user.</p>
+<ul><li><span class="tg">Gain</span>Each person picks what suits their eyes and lighting.</li><li><span class="tg">Cost</span>Every screen and state must be checked twice; MUI makes the switch easy but not the checking.</li></ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">8C</span>Counter dark by default, Manager/Owner light</h3>
+<div class="mock"><div class="pair">
+<div style="flex:1"><div class="pl">Counter (dark)</div><div class="mini dk"><div class="mt"><span>C1 · Nadia</span><span><i class="dot"></i>Online</span></div><div class="msc">Scan or type Barcode</div><div class="ml"><span>Nestlé Milkpak 1L</span><span>290</span></div><div class="ml"><span>Dawn Bread Large</span><span>200</span></div><div class="mtot"><span class="mu">Total</span><b>Rs 490</b></div></div></div>
+<div style="flex:1"><div class="pl">Manager / Owner (light)</div><div class="mini lt"><div class="mt"><span>Main Branch</span><span>Today</span></div><div class="mk"><div><span class="mu">Sales</span><b>168,200</b></div><div><span class="mu">Negative stock</span><b>7</b></div></div></div></div>
+</div></div>
+<ul><li><span class="tg">Gain</span>Counter total and status colours stand out; less glare during all-day use.</li><li><span class="tg">Cost</span>Still two palettes, but each is used in only one app; a Manager moving between them sees two looks.</li></ul>
+</div>
+</div>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+<h2><span class="n">9</span>What are the stakes for this first UI?</h2>
+<p class="why">This sets how much polish, accessibility and brand work goes in before the first Mart uses it.</p>
+<div class="opts">
+
+<div class="card">
+<h3><span class="oid">9A</span>Pilot Mart first</h3>
+<div class="ic" style="background:#E7F5EC"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28V14" stroke="#2E7D32" stroke-width="3" stroke-linecap="round"/><path d="M16 16C16 9 10 6 5 7c0 6 4 10 11 9zM16 13c0-6 5-9 11-8 0 6-4 9-11 8z" fill="#2E7D32"/></svg></div>
+<ul>
+<li><span class="tg">Gain</span>Fastest to a working shop; feedback from real Cashiers early.</li>
+<li><span class="tg">Gain</span>Good-enough polish and accessibility basics (keyboard, readable contrast, labels).</li>
+<li><span class="tg">Cost</span>Likely rework of look, brand and onboarding before selling to other Marts.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">9B</span>Commercial product for many Marts</h3>
+<div class="ic" style="background:#E8F1FB"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="12" width="8" height="16" fill="#1976D2"/><rect x="12" y="6" width="8" height="22" fill="#5B8FC7"/><rect x="20" y="10" width="8" height="18" fill="#1976D2"/><path d="M3 28h26" stroke="#1D2330" stroke-width="2"/></svg></div>
+<ul>
+<li><span class="tg">Gain</span>Polished brand, WCAG 2.2 AA, white-label ready and guided onboarding from day one.</li>
+<li><span class="tg">Cost</span>Much more design and test effort before the first Mart goes live.</li>
+<li><span class="tg">Cost</span>Decisions made before real-shop feedback may need changing anyway.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3><span class="oid">9C</span>Pilot first, built commercial-ready</h3>
+<div class="ic" style="background:#FFF3E0"><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 4l12 6-12 6-12-6z" fill="#E8A33D"/><path d="M4 16l12 6 12-6" fill="none" stroke="#B87612" stroke-width="2.5"/><path d="M4 22l12 6 12-6" fill="none" stroke="#B87612" stroke-width="2.5" stroke-dasharray="3 2"/></svg></div>
+<ul>
+<li><span class="tg">Gain</span>Design tokens, theme structure and brand slots in place; visual polish added later.</li>
+<li><span class="tg">Gain</span>Pilot ships close to 9A's timeline with less rework afterwards.</li>
+<li><span class="tg">Cost</span>Some upfront structure work the pilot itself won't notice.</li>
+</ul>
+</div>
+</div>
+</section>
+
+<div class="answer" id="answer">
+<h2>How to answer</h2>
+<p style="margin:0 0 6px">Reply with one pick per section, for example: <code>1A, 2C, 3C, 4A, 5B, 6B, 7A, 8C, 9C</code></p>
+<p style="margin:0">Add any tweaks in plain words (for example "3C but buttons add up" or "6A with the exceptions counts underneath"). Mixing parts of two options is fine.</p>
+</div>
+</main>
+</body>
+</html>

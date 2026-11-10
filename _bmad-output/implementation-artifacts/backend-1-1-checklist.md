@@ -1,0 +1,31 @@
+# Story 1.1 (backend half): owner-implemented checklist
+
+Owner: Suleman (learning .NET). Claude tracks this list and explains each step on request, but writes no backend code.
+Story 1.1 is done only when this list and the frontend spec (`spec-1-1-project-scaffold-and-build-pipeline.md`) are both finished.
+
+## Decisions to make first
+
+- [x] **Backend code organization**: vertical slices per module, no MediatR. Recorded as AD-13 in the architecture spine, decided 2026-11-09.
+- [x] ~~MySQL for local development: Docker Desktop with a throwaway `mysql:8.4` container, matching CI.~~ Decided 2026-11-09; **superseded 2026-11-10 by AD-14** — switched to SQL Server (owner already had SQL Server/SSMS available locally; Docker Desktop + WSL2 for MySQL weren't ready). Local dev and CI both target SQL Server now.
+
+## Repository
+
+`backend/` is its own Git repo (branch `main`, no commits yet), pushed to the GitHub repo **backend**. The frontend is a separate repo, and planning folders (`_bmad`, `_bmad-output`, `.claude`) live outside both and are never pushed. Paths below are relative to `backend/`.
+
+- [x] `.gitignore`, `.gitattributes`, `.editorconfig` (repo hygiene, created by Claude 2026-10-16; no code).
+- [ ] First commit, create the GitHub repo **backend**, push.
+
+## Tasks
+
+- [x] `backend/global.json`: pin the .NET SDK to 10.0.x (10.0.402, roll forward latestFeature). Scaffolded by Claude 2026-10-16; was living at the planning root (untracked by any repo) until the owner moved it into `backend/` on 2026-11-10.
+- [x] `backend/Directory.Build.props`: net10.0, nullable, implicit usings, warnings as errors — reintroduced by Claude 2026-11-10 (owner explicitly asked), now shared by `backend.Api` and `backend.Api.Tests`.
+- [x] `backend/Directory.Packages.props`: central package versions (`ManagePackageVersionsCentrally`), reintroduced by Claude 2026-11-10. Both csproj files now reference packages with no inline `Version`. Along the way, `TreatWarningsAsErrors` surfaced a real transitive vulnerability (`System.Security.Cryptography.Pkcs` 9.0.11, pulled in via the EF Core SqlServer provider's `Microsoft.Data.SqlClient` dependency) — pinned explicitly to the patched `9.0.22` in `Directory.Packages.props` + `backend.Api.csproj`. `dotnet build` and `dotnet test` both clean (0 warnings, 0 errors; 1/1 tests pass) after the change.
+- [x] `backend/backend.slnx` + `backend/backend.Api/`: skeleton (renamed from Pos.Api to backend.Api by the owner). `Modules/Tenancy/Domain/{Mart.cs,Branch.cs}` and `Infrastructure/Persistence/AppDbContext.cs` written by the owner, with `DbSet<Mart>`/`DbSet<Branch>` wired and `AddDbContext<AppDbContext>` registered in `Program.cs` (vertical-slices layout, per AD-13).
+- [x] Health endpoint `GET /api/v1/health` returns 200 `{ "status": "ok" }`. The unversioned `/api/health` returns 404. Verified by Claude 2026-11-10 by running the app and curling both routes (`http://localhost:5000`, matching the frontend dev proxy target). Still no automated test covering this (see the xUnit item below) — a manual curl isn't a regression guard.
+- [x] `AppDbContext` registered with `Microsoft.EntityFrameworkCore.SqlServer` (per AD-14, replacing the Microting MySQL provider — no `ServerVersion` needed for SQL Server). The connection string comes from configuration (`ConnectionStrings:DefaultConnection`) and points at the local SQL Server instance (`Server=localhost;Database=PosSystem;Trusted_Connection=True;TrustServerCertificate=True;`, Windows Auth, no password to leak) for dev. Startup fails fast with a clear message if it is missing (`Program.cs`). Done by Claude 2026-11-10, owner explicitly asked for this one.
+- [x] Baseline (empty — well, `Mart`/`Branch` tables) EF Core migration: `dotnet ef migrations add InitialCreate --project backend.Api --startup-project backend.Api`, generated `backend.Api/Migrations/20261110123135_InitialCreate.cs` + Designer + model snapshot. Applied via `dotnet ef database update`; `PosSystem` now has `__EFMigrationsHistory`, `Marts`, `Branches` (FK + index on `Branches.MartId`), verified via `sqlcmd`. Local `PosSystem` database created via `sqlcmd`. Done by Claude 2026-11-10, owner explicitly asked for this one.
+- [x] `backend/backend.Api.Tests` (xUnit + WebApplicationFactory, renamed from the planned `Pos.Api.Tests`) now covers all three cases: startup failing without a connection string (`StartupTests.cs`), health OK, unversioned 404 (`HealthEndpointTests.cs`, Claude wrote these two 2026-11-10, owner explicitly asked). 3/3 tests pass.
+  - The connection-string bug noted earlier (`?? throw` only catching missing key, not empty string) is already fixed in `Program.cs` — uses `string.IsNullOrWhiteSpace` plus a forced scoped `GetRequiredService<AppDbContext>()` resolve right after `builder.Build()`.
+- [x] `backend.IntegrationTests` (new project, added to `backend.slnx`) applies migrations to a throwaway, uniquely-named database on the real local SQL Server instance and checks `__EFMigrationsHistory` exists via `SELECT OBJECT_ID(...)`, then drops the throwaway database in a `finally`. Reads its base connection string from `ConnectionStrings__DefaultConnection` (falls back to the local Windows-Auth one) so the same test works against CI's `sa`/password SQL Server service container. Written by Claude 2026-11-10, owner explicitly asked; verified passing locally (throwaway DB confirmed cleaned up afterward).
+- [x] `backend/.github/workflows/ci.yml`: restore/build/test against a `mcr.microsoft.com/mssql/server:2022-latest` service container (CI-only literal SA password — not a real secret, job-local container only), with a retry loop around `dotnet ef database update` instead of a Docker health-check (sqlcmd path differs across mssql image versions, so a plain retry is more robust). `dotnet test` at the solution level picks up both `backend.Api.Tests` and `backend.IntegrationTests`. Written by Claude 2026-11-10, owner explicitly asked. **Not yet verified by an actual GitHub Actions run** — only tested in concept and against the local build; confirm on the first push once the repo is on GitHub.
+- [x] Spine: AD-13 and AD-14 both recorded; Deferred section updated for SQL Server backups (done 2026-11-10).
