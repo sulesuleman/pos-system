@@ -1,18 +1,14 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { AppThemeProvider } from '../../../shared/theme'
 import { SuperAdminArea } from './SuperAdminArea'
-import * as superAdminAuth from '../../../shared/api/superAdminAuth'
-import * as health from '../../../shared/api/health'
+import * as marts from '../../../shared/api/marts'
 
 function renderArea() {
   return render(
-    <MemoryRouter initialEntries={['/super-admin']}>
-      <Routes>
-        <Route path="/super-admin" element={<SuperAdminArea />} />
-        <Route path="/super-admin/sign-in" element={<div>sign-in page</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <AppThemeProvider>
+      <SuperAdminArea />
+    </AppThemeProvider>,
   )
 }
 
@@ -21,48 +17,57 @@ describe('SuperAdminArea', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders the Super Admin heading and the health line', async () => {
-    vi.spyOn(health, 'getHealth').mockResolvedValue('ok')
+  it('renders the Marts heading and the Marts list', async () => {
+    vi.spyOn(marts, 'listMarts').mockResolvedValue({
+      ok: true,
+      marts: [{ id: '1', name: 'Mart A', code: 'ABC123', status: 'active' }],
+    })
 
     renderArea()
 
-    expect(screen.getByRole('heading', { name: 'Super Admin' })).toBeInTheDocument()
-    expect(await screen.findByText('API: ok')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Marts' })).toBeInTheDocument()
+    expect(await screen.findByText('Mart A')).toBeInTheDocument()
   })
 
-  it('shows API: checking… before the health request settles', () => {
-    vi.spyOn(health, 'getHealth').mockReturnValue(new Promise(() => {}))
+  it('opens the Create Mart dialog from the button', async () => {
+    vi.spyOn(marts, 'listMarts').mockResolvedValue({ ok: true, marts: [] })
 
     renderArea()
+    await screen.findByText(/create one to get started/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Create Mart' }))
 
-    expect(screen.getByText('API: checking…')).toBeInTheDocument()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
-  it('shows API: unavailable when the API is unreachable', async () => {
-    vi.spyOn(health, 'getHealth').mockResolvedValue('unavailable')
+  it('refreshes the Marts list after a successful create is acknowledged', async () => {
+    const listMartsSpy = vi
+      .spyOn(marts, 'listMarts')
+      .mockResolvedValueOnce({ ok: true, marts: [] })
+      .mockResolvedValueOnce({
+        ok: true,
+        marts: [{ id: '2', name: 'New Mart', code: 'XYZ999', status: 'active' }],
+      })
+    vi.spyOn(marts, 'createMart').mockResolvedValue({
+      ok: true,
+      mart: { martId: '2', martCode: 'XYZ999', ownerStaffId: '1002', setupCode: 'SETUP-2' },
+    })
 
     renderArea()
+    await screen.findByText(/create one to get started/i)
+    fireEvent.click(screen.getByRole('button', { name: 'Create Mart' }))
 
-    expect(await screen.findByText('API: unavailable')).toBeInTheDocument()
-  })
+    fireEvent.change(screen.getByLabelText(/Mart name/), { target: { value: 'New Mart' } })
+    fireEvent.change(screen.getByLabelText(/Owner name/), { target: { value: 'Owner' } })
+    fireEvent.change(screen.getByLabelText(/Owner contact/), { target: { value: 'contact' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
-  it('clears local auth state and redirects to sign-in when sign-out succeeds', async () => {
-    vi.spyOn(health, 'getHealth').mockResolvedValue('ok')
-    vi.spyOn(superAdminAuth, 'signOut').mockResolvedValue({ ok: true })
+    await screen.findByText('Mart created')
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
 
-    renderArea()
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
-
-    expect(await screen.findByText('sign-in page')).toBeInTheDocument()
-  })
-
-  it('still redirects to sign-in when the sign-out call fails', async () => {
-    vi.spyOn(health, 'getHealth').mockResolvedValue('ok')
-    vi.spyOn(superAdminAuth, 'signOut').mockResolvedValue({ ok: false })
-
-    renderArea()
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
-
-    expect(await screen.findByText('sign-in page')).toBeInTheDocument()
+    expect(await screen.findByText('New Mart')).toBeInTheDocument()
+    expect(listMartsSpy).toHaveBeenCalledTimes(2)
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
   })
 })
