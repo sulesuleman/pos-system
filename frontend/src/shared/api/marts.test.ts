@@ -1,8 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createMart, listMarts } from './marts'
+import { createMart, listMarts, type CreateMartInput } from './marts'
 
 function response(status: number, body?: unknown): Response {
   return new Response(body === undefined ? null : JSON.stringify(body), { status })
+}
+
+function validInput(overrides: Partial<CreateMartInput> = {}): CreateMartInput {
+  return {
+    martName: 'Mart A',
+    ownerFirstName: 'Ayesha',
+    ownerLastName: 'Khan',
+    ownerEmail: 'ayesha@example.com',
+    ownerContact: '+923001234567',
+    ownerCnic: '12345-1234567-1',
+    ...overrides,
+  }
 }
 
 describe('listMarts', () => {
@@ -59,7 +71,7 @@ describe('createMart', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
 
-    await createMart({ martName: 'Mart A', ownerName: 'Owner A', ownerContact: '0300-1234567' })
+    await createMart(validInput())
 
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringMatching(/\/api\/v1\/marts$/),
@@ -71,9 +83,7 @@ describe('createMart', () => {
     const mart = { martId: '1', martCode: 'ABC123', ownerStaffId: '1001', setupCode: 'XYZ' }
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(201, mart)))
 
-    await expect(
-      createMart({ martName: 'Mart A', ownerName: 'Owner A', ownerContact: 'contact' }),
-    ).resolves.toEqual({ ok: true, mart })
+    await expect(createMart(validInput())).resolves.toEqual({ ok: true, mart })
   })
 
   it('returns per-field validation errors on 400', async () => {
@@ -82,9 +92,7 @@ describe('createMart', () => {
       vi.fn().mockResolvedValue(response(400, { errors: { martName: 'Mart name is required.' } })),
     )
 
-    await expect(
-      createMart({ martName: '', ownerName: 'Owner A', ownerContact: 'contact' }),
-    ).resolves.toEqual({
+    await expect(createMart(validInput({ martName: '' }))).resolves.toEqual({
       ok: false,
       reason: 'validation',
       errors: { martName: 'Mart name is required.' },
@@ -94,16 +102,12 @@ describe('createMart', () => {
   it('returns error on an unexpected status', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(500)))
 
-    await expect(
-      createMart({ martName: 'Mart A', ownerName: 'Owner A', ownerContact: 'contact' }),
-    ).resolves.toEqual({ ok: false, reason: 'error' })
+    await expect(createMart(validInput())).resolves.toEqual({ ok: false, reason: 'error' })
   })
 
   it('returns error on a network failure', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
 
-    await expect(
-      createMart({ martName: 'Mart A', ownerName: 'Owner A', ownerContact: 'contact' }),
-    ).resolves.toEqual({ ok: false, reason: 'error' })
+    await expect(createMart(validInput())).resolves.toEqual({ ok: false, reason: 'error' })
   })
 })

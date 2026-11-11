@@ -13,14 +13,20 @@ export type ListMartsResult = { ok: true; marts: Mart[] } | { ok: false }
 
 export type CreateMartInput = {
   martName: string
-  ownerName: string
+  ownerFirstName: string
+  ownerLastName: string
+  ownerEmail: string
   ownerContact: string
+  ownerCnic: string
 }
 
 export type CreateMartFieldErrors = {
   martName?: string
-  ownerName?: string
+  ownerFirstName?: string
+  ownerLastName?: string
+  ownerEmail?: string
   ownerContact?: string
+  ownerCnic?: string
 }
 
 export type CreateMartSuccess = {

@@ -57,8 +57,11 @@ describe('SuperAdminArea', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create Mart' }))
 
     fireEvent.change(screen.getByLabelText(/Mart name/), { target: { value: 'New Mart' } })
-    fireEvent.change(screen.getByLabelText(/Owner name/), { target: { value: 'Owner' } })
-    fireEvent.change(screen.getByLabelText(/Owner contact/), { target: { value: 'contact' } })
+    fireEvent.change(screen.getByLabelText(/First name/), { target: { value: 'Ayesha' } })
+    fireEvent.change(screen.getByLabelText(/Last name/), { target: { value: 'Khan' } })
+    fireEvent.change(screen.getByLabelText(/Email/), { target: { value: 'ayesha@example.com' } })
+    fireEvent.change(screen.getByLabelText(/Contact/), { target: { value: '+923001234567' } })
+    fireEvent.change(screen.getByLabelText(/CNIC/), { target: { value: '1234512345671' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     await screen.findByText('Mart created')
