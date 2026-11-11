@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
-import Paper from '@mui/material/Paper'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -107,22 +106,26 @@ export function SignInPage() {
           <ThemeToggleButton />
         </Box>
         <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Paper
-            sx={{
-              width: '100%',
-              maxWidth: 400,
-              p: { xs: 3, sm: 5 },
-              borderRadius: 3,
-              boxShadow: theme.customShadows.z16,
-            }}
-          >
-            <Typography variant="h5" component="h1" gutterBottom sx={{ fontWeight: 700 }}>
-              Super Admin sign in
+          <Box sx={{ width: '100%', maxWidth: 400 }}>
+            <Typography
+              variant="overline"
+              sx={{ display: 'block', letterSpacing: 3, color: 'text.secondary', fontWeight: 600, mb: 1 }}
+            >
+              Platform Access
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography
+              variant="h3"
+              component="h1"
+              sx={{ fontWeight: 700, letterSpacing: -0.5 }}
+            >
+              Super Admin
+            </Typography>
+            <Box sx={{ width: 40, height: 3, borderRadius: 1.5, bgcolor: 'primary.main', my: 2.5 }} />
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
               Enter your platform credentials to continue.
             </Typography>
-            <Stack component="form" spacing={2.5} onSubmit={(event) => void handleSubmit(event)} noValidate>
+
+            <Stack component="form" spacing={3} onSubmit={(event) => void handleSubmit(event)} noValidate>
               <InputField
                 label="Email"
                 type="email"
@@ -154,11 +157,12 @@ export function SignInPage() {
                 fullWidth
                 disabled={submitting}
                 aria-label="Sign in"
+                sx={{ py: 1.5, letterSpacing: 1, fontWeight: 600 }}
               >
                 {submitting ? <CircularProgress size={24} color="inherit" /> : 'Sign in'}
               </Button>
             </Stack>
-          </Paper>
+          </Box>
         </Box>
       </Box>
     </Box>
