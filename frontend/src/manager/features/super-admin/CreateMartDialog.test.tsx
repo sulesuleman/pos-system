@@ -97,6 +97,21 @@ describe('CreateMartDialog', () => {
     expect(screen.getByLabelText(/CNIC/)).toHaveValue('12345-1234567-1')
   })
 
+  it('preserves cursor position when editing in the middle of the CNIC value', () => {
+    renderDialog()
+    const cnicInput = screen.getByLabelText(/CNIC/) as HTMLInputElement
+
+    fireEvent.change(cnicInput, { target: { value: '123456789' } })
+    expect(cnicInput).toHaveValue('12345-6789')
+
+    // Insert a digit right after the first group (before the dash) rather than appending at the
+    // end, the way a real mid-string edit would arrive from the browser.
+    fireEvent.change(cnicInput, { target: { value: '123450-6789', selectionStart: 6 } })
+
+    expect(cnicInput).toHaveValue('12345-06789')
+    expect(cnicInput.selectionStart).toBe(7)
+  })
+
   it('blocks submit on an incomplete CNIC with its own message', () => {
     const createMartSpy = vi.spyOn(marts, 'createMart')
     renderDialog()

@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
@@ -68,6 +68,26 @@ function formatCnic(value: string): string {
   return formatted
 }
 
+// Maps a cursor position in the raw (unformatted) input to the equivalent position in the
+// formatted string, counted by digits seen so far — so a cursor sitting between two digits stays
+// between the same two digits after dashes are inserted/removed around it.
+function mapCnicCursor(rawValue: string, rawCursor: number, formatted: string): number {
+  const digitsBeforeCursor = rawValue.slice(0, rawCursor).replace(/\D/g, '').length
+  if (digitsBeforeCursor === 0) {
+    return 0
+  }
+  let digitsSeen = 0
+  for (let i = 0; i < formatted.length; i++) {
+    if (/\d/.test(formatted[i])) {
+      digitsSeen++
+      if (digitsSeen === digitsBeforeCursor) {
+        return i + 1
+      }
+    }
+  }
+  return formatted.length
+}
+
 // The "Create Mart" dialog: collects Mart name plus the Owner's first name, last name, email,
 // contact number and CNIC, validates them client-side on submit (required-ness for every field,
 // plus format checks for Email/Contact/CNIC), then reveals the one-time Mart code / Owner Staff
@@ -79,6 +99,17 @@ export function CreateMartDialog({ open, onClose, onCreated }: CreateMartDialogP
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [reveal, setReveal] = useState<CreateMartSuccess | null>(null)
+  const cnicInputRef = useRef<HTMLInputElement>(null)
+  const cnicCursorRef = useRef<number | null>(null)
+
+  // Restores the cursor position computed in `updateCnic` after the formatted value re-renders —
+  // a controlled input would otherwise reset the caret to the end on every keystroke.
+  useEffect(() => {
+    if (cnicCursorRef.current !== null) {
+      cnicInputRef.current?.setSelectionRange(cnicCursorRef.current, cnicCursorRef.current)
+      cnicCursorRef.current = null
+    }
+  }, [form.ownerCnic])
 
   function resetState() {
     setForm(EMPTY_FORM)
@@ -119,7 +150,11 @@ export function CreateMartDialog({ open, onClose, onCreated }: CreateMartDialogP
   }
 
   function updateCnic(event: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({ ...prev, ownerCnic: formatCnic(event.target.value) }))
+    const rawValue = event.target.value
+    const rawCursor = event.target.selectionStart ?? rawValue.length
+    const formatted = formatCnic(rawValue)
+    cnicCursorRef.current = mapCnicCursor(rawValue, rawCursor, formatted)
+    setForm((prev) => ({ ...prev, ownerCnic: formatted }))
     clearFieldError('ownerCnic')
   }
 
@@ -255,6 +290,7 @@ export function CreateMartDialog({ open, onClose, onCreated }: CreateMartDialogP
                 error={fieldErrors.ownerCnic !== undefined}
                 helperText={fieldErrors.ownerCnic}
                 required
+                inputRef={cnicInputRef}
               />
               {serverError !== null && (
                 <Typography role="alert" color="error" variant="body2">
