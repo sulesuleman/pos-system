@@ -19,7 +19,7 @@ npm test            # Vitest (single run)
 npm run build       # production build to dist/ (index.html + counter.html)
 ```
 
-In development, requests to `/api` are proxied to `http://localhost:5000`, the backend's dev URL.
+In development, requests to `/api` are proxied to `http://localhost:5139`, the backend's dev URL (the `http` launch profile in `backend/backend.Api/Properties/launchSettings.json`).
 To point the app at a different API, copy `.env.example` to `.env.local` and set
 `VITE_API_BASE_URL`. All API routes are versioned under `/api/v1` (for example `/api/v1/health`).
 

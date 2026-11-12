@@ -135,6 +135,7 @@ export function SignInPage() {
                 autoComplete="username"
                 autoFocus
                 required
+                slotProps={{ htmlInput: { 'data-testid': 'sign-in-email-input' } }}
               />
               <InputField
                 label="Password"
@@ -144,9 +145,10 @@ export function SignInPage() {
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
                 required
+                slotProps={{ htmlInput: { 'data-testid': 'sign-in-password-input' } }}
               />
               {error !== null && (
-                <Typography role="alert" color="error" variant="body2">
+                <Typography role="alert" color="error" variant="body2" data-testid="sign-in-error">
                   {error}
                 </Typography>
               )}
@@ -157,6 +159,7 @@ export function SignInPage() {
                 fullWidth
                 disabled={submitting}
                 aria-label="Sign in"
+                data-testid="sign-in-submit-button"
                 sx={{ py: 1.5, letterSpacing: 1, fontWeight: 600 }}
               >
                 {submitting ? <CircularProgress size={24} color="inherit" /> : 'Sign in'}

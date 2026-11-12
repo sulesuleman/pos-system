@@ -7,6 +7,11 @@ dist-ssr/
 coverage/
 *.tsbuildinfo
 
+# Playwright artifacts
+test-results/
+playwright-report/
+playwright/.auth/
+
 # Environment and secrets (never commit). .env.example is the template and is tracked.
 .env
 .env.*

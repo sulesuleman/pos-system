@@ -32,7 +32,12 @@ export function ManagerShell() {
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <ThemeToggleButton sx={{ color: 'inherit' }} />
-            <Button color="inherit" onClick={() => void handleSignOut()} disabled={signingOut}>
+            <Button
+              color="inherit"
+              onClick={() => void handleSignOut()}
+              disabled={signingOut}
+              data-testid="sign-out-button"
+            >
               Sign out
             </Button>
           </Box>

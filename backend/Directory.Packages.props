@@ -9,6 +9,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.SqlServer" Version="10.0.14" />
     <!-- Pin: override the vulnerable 9.0.11 pulled in transitively via Microsoft.Data.SqlClient (EF Core SqlServer provider). -->
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="9.0.22" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

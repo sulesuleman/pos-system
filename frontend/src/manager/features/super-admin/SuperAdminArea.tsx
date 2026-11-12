@@ -18,7 +18,7 @@ export function SuperAdminArea() {
   }
 
   return (
-    <Container sx={{ py: 3 }}>
+    <Container sx={{ py: 3 }} data-testid="super-admin-area">
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h5" component="h1">
           Marts
