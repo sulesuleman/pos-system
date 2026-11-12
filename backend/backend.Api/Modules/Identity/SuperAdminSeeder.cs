@@ -1,12 +1,17 @@
 using backend.Api.Infrastructure.Persistence;
 using backend.Api.Modules.Identity.Domain;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Api.Modules.Identity;
 
 public class SuperAdminSeeder
 {
+    // SQL Server error numbers for a unique-index/constraint violation.
+    private const int UniqueConstraintViolation = 2627;
+    private const int UniqueIndexViolation = 2601;
+
     public static async Task EnsureSeededAsync(AppDbContext db, IConfiguration config)
     {
         if (await db.SuperAdmins.AnyAsync())
@@ -34,6 +39,17 @@ public class SuperAdminSeeder
         superAdmin.PasswordHash = hasher.HashPassword(superAdmin, password);
 
         db.SuperAdmins.Add(superAdmin);
-        await db.SaveChangesAsync();
+
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is SqlException sqlEx &&
+            (sqlEx.Number == UniqueConstraintViolation || sqlEx.Number == UniqueIndexViolation))
+        {
+            // Two app instances (or, in tests, two concurrently-started WebApplicationFactory
+            // hosts) can both see an empty table and both try to seed at once. The first one to
+            // commit wins; this one lost the race, which is fine - the table is seeded either way.
+        }
     }
 }

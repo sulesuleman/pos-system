@@ -28,6 +28,9 @@ jobs:
 
     env:
       ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=PosSystem;User Id=sa;Password=P@ssw0rd_CI_Only_2026!;TrustServerCertificate=True;"
+      # CI-only seed credentials for a throwaway job-local database. Not a real account; never used outside this job.
+      SuperAdmin__Email: "ci-super-admin@example.com"
+      SuperAdmin__Password: "P@ssw0rd_CI_Only_SuperAdmin_2026!"
 
     steps:
       - uses: actions/checkout@v4
