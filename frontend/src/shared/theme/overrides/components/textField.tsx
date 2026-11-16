@@ -188,6 +188,21 @@ export function textField(theme: Theme) {
             opacity: 1,
             color: color.placeholder,
           },
+          // Chrome/Edge paint the autofilled field with their own yellow/light-blue background
+          // via an internal UA style no CSS `background-color` can override. The fix is this
+          // well-known trick: an inset box-shadow the size of the field, painted in this app's
+          // own filled-field color, layered on top of (not replacing) that UA background.
+          // `!important` is required: without it, Chrome's own autofill background wins back as
+          // soon as the field loses focus (its internal autofill style reasserts itself at that
+          // point with higher priority than an unmarked override).
+          '&:-webkit-autofill, &:-webkit-autofill:hover, &:-webkit-autofill:focus, &:-webkit-autofill:active': {
+            WebkitBoxShadow: `0 0 0 1000px ${theme.palette.components.textField.filled} inset !important`,
+            WebkitTextFillColor: `${theme.palette.text.primary} !important`,
+            caretColor: theme.palette.text.primary,
+            // Chrome also re-applies its own background on a delay/transition; pushing the
+            // transition out this far means it never visibly completes.
+            transition: 'background-color 600000s ease-in-out 0s',
+          },
         },
       },
     },
