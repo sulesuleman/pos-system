@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardRef } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Paper from '@mui/material/Paper'
 import Skeleton from '@mui/material/Skeleton'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Typography from '@mui/material/Typography'
+import type { GridColDef } from '@mui/x-data-grid'
+import { StyledDataGrid } from '../../../shared/common/DataDisplay/StyledDataGrid'
 import { listMarts, type Mart } from '../../../shared/api/marts'
 
 const GENERIC_LIST_ERROR = 'Something went wrong loading Marts.'
+
+const columns: GridColDef<Mart>[] = [
+  { field: 'name', headerName: 'Name', flex: 1 },
+  { field: 'code', headerName: 'Code', flex: 1 },
+  { field: 'status', headerName: 'Status', flex: 1 },
+]
 
 export type MartsListHandle = {
   refresh: () => void
@@ -90,26 +91,5 @@ export const MartsList = forwardRef<MartsListHandle>(function MartsList(_props, 
     return <Typography color="text.secondary">No Marts yet — create one to get started.</Typography>
   }
 
-  return (
-    <TableContainer component={Paper}>
-      <Table aria-label="Marts">
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Code</TableCell>
-            <TableCell>Status</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {marts.map((mart) => (
-            <TableRow key={mart.id}>
-              <TableCell>{mart.name}</TableCell>
-              <TableCell>{mart.code}</TableCell>
-              <TableCell>{mart.status}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  )
+  return <StyledDataGrid columns={columns} rows={marts} />
 })

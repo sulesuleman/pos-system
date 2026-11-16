@@ -16,6 +16,12 @@ Each entry point (`manager/`, `counter/`) organizes its own screens under `src/<
 - Example: `src/shared/common/Inputs/InputField/index.tsx` + `src/shared/common/Inputs/InputField/useInputFieldStyles.tsx`
 - Never tightly couple a reusable component to a specific screen or feature: no page-specific copy, business logic, or API calls inside `src/shared/common`. Props in, UI out — it should be usable from both the Manager/Owner and Counter entry points.
 
+## Data grids / tables
+
+- Always use `src/shared/common/DataDisplay/StyledDataGrid` for any tabular/list UI — never a raw MUI `DataGrid` or an ad-hoc table. It wraps `@mui/x-data-grid` with this app's table-card styling, infinite scroll (`onLoadMore`/`loadingMore`), drag-to-scroll, a mobile card layout below `laptop` (`renderMobileCard` or `columnCards`), a loaded/total footer, and an overflow-tooltip default cell renderer.
+- Adapted from `C:\Users\MuhammadSuleman\Desktop\OfficeWork\vdk-tenent-projects\VDK-AccessAndControl\AccessAndControl.Frontend\src\ui\components\DataGrid\PrimaryGrid.tsx`, deliberately trimmed: no `GridFilters`/filter-dialog system, no `inCard` prop (it always draws its own card), no dead pagination props, no `react-i18next` (plain strings — this app has no i18n setup).
+- `src/shared/common/DataDisplay/OverflowTooltip` (single-line text, truncates with an ellipsis, shows the full value in a tooltip only when actually overflowing) is its own shared component too, not just an internal piece of the grid — reuse it anywhere else long text might get cut off (cards, etc.).
+
 ## Theme
 
 - Theme and MUI overrides are adapted (not copied verbatim) from another project's frontend: `C:\Users\MuhammadSuleman\Desktop\OfficeWork\vdk-tenent-projects\VDK-AccessAndControl\AccessAndControl.Frontend\src\ui\theme`.
