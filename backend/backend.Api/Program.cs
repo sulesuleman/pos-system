@@ -1,6 +1,8 @@
 using backend.Api.Infrastructure.Persistence;
 using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Endpoints;
+using backend.Api.Modules.Tenancy;
+using backend.Api.Modules.Tenancy.Endpoints;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,6 +34,9 @@ builder.Services.AddSession(options =>
     options.IdleTimeout = TimeSpan.FromMinutes(30);
 });
 
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantContext, SessionTenantContext>();
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -48,6 +53,7 @@ var v1 = app.MapGroup("/api/v1");
 
 v1.MapGet("/health", () => Results.Ok(new {status = "ok" }));
 v1.MapSuperAdminAuthEndpoints();
+v1.MapMartsEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
