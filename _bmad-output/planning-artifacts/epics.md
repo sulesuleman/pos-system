@@ -408,6 +408,8 @@ So that each job in my Mart gets exactly the access it needs.
 
 ### Story 2.2: Create staff accounts and assign Roles per Branch
 
+**Note (2026-11-17):** this story's text predates the 2026-11-17 Owner/Manager-login split (FR-25) and is stale for the Manager Role specifically - it still describes one unified Staff ID + 8-digit-activation-code flow for everyone, but Manager (like Owner) actually gets an email + one-time setup code instead, per FR-25/AD-15. Below is unedited/original text, still correct for Counter-role (Cashier) staff. Manager creation was built ahead of the rest of this story, without Branch assignment yet (Branches/Story 1.6 don't exist): Owner enters a Manager's name + email on a Staff screen, backend creates a `Users` row with `RoleId` = the seeded Manager Role, a Mart-unique Staff ID, and a one-time setup code shown once - same shape as Super Admin creating an Owner (Story 1.3). The Role-per-Branch assignment and Cashier's Staff ID + activation-code path below are still backlog.
+
 As an Owner,
 I want to add staff and give each a Role in each Branch they work in,
 So that people can be set up without sharing logins.
@@ -428,6 +430,8 @@ So that people can be set up without sharing logins.
 **And** account creation and every assignment change are written to the Audit Log
 
 ### Story 2.3: Staff activation and login
+
+**Note (2026-11-17):** same staleness as Story 2.2 - this text's "Mart code, Staff ID and the code... sets a PIN" flow is Counter-role (Cashier) only. Manager activates/signs in with Owner's pattern instead: Mart code + email + one-time setup code -> sets a password (`POST /auth/activate`), then Mart code + email + password (`POST /auth/sign-in`) - both endpoints now shared between Owner and Manager (AD-15), since the flow is identical and differs only by which Role the account has.
 
 As a staff member,
 I want to set my own PIN with my activation code and then log in,

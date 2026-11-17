@@ -266,6 +266,18 @@ graph TB
   - Revisit only if the team grows enough that cross-cutting pipeline behaviors (logging, validation, auth) become repetitive across many slices.
 - Decided 2026-11-09 for Story 1.1 (backend half).
 
+### AD-15 — Identity schema: one `Users` table + a `Roles` table, not a per-Role table [ADOPTED]
+
+- **Binds:** AD-4 (login), AD-5 (device/read-only rule), FR-1 (Roles/Permissions), FR-25/FR-27 (Owner/Manager/Counter-role login), Epic 2 (Staff, Roles and Registered Devices)
+- **Prevents:** a new one-off table per Role (an `Owners` table, then a separate `Managers` table, then `Cashiers`) that duplicates the same activation/login columns three times and needs its own StaffId-uniqueness query each time.
+- **Rule:**
+  - Replaces the Story 1.3 `Owner` table with a generic `Users` table (Id, MartId, StaffId, RoleId, FirstName, LastName, Email?, Contact, Cnic, PasswordHash?, PinHash?, SetupCodeHash?, SetupCodeExpiresAtUtc?, SetupCodeUsedAtUtc?, CreatedByUserId?, CreatedAtUtc) holding every Role (Owner, Manager, and later Counter-role) in one Mart-scoped, query-filtered table. `Email`/`PasswordHash`/`SetupCodeHash`/`SetupCodeExpiresAtUtc` become nullable because Counter-role staff (FR-27) log in with Staff ID + PIN, not email + password, and never populate them. `PinHash` is reserved now (unused until Epic 2's Counter-role work) so that table isn't altered twice.
+  - A new `Roles` table (Id, MartId nullable, Name, IsSystemDefault, CreatedAtUtc) holds the three seeded built-in Roles (Owner, Manager, Cashier; `MartId = null`, global) and, later, each Mart's own custom Roles (`MartId` set) per FR-1 — not built now, but the shape must not block it.
+  - `Users.RoleId` is a required FK to `Roles.Id` (`Restrict` on delete — a Role in use can never be deleted out from under its Users). No denormalized Role-name column on `Users`; a display name is a join, to avoid drift if a Role is renamed.
+  - Migration path: rename the existing `Owners` table to `Users` in place (not create-new-and-copy), since nothing holds a real FK into `Owners.Id` today — preserves the one live Mart's existing Owner row and its `Id`.
+  - Owner's and Manager's activation (`/auth/activate`) and sign-in (`/auth/sign-in`) endpoints are generalized and shared — both Roles follow the identical Mart code + email + setup-code-then-password flow (FR-25); nothing in that flow differs by Role, so one implementation serves both. Counter-role's Staff ID + PIN login (FR-27) stays a separate, unshared endpoint once built, since it's a structurally different flow (no email, no setup code).
+- Decided 2026-11-17, user-driven (building Manager account creation/activation/login surfaced that Story 1.3's single-purpose `Owner` table didn't generalize to a second Role, and the user chose to fix the schema now rather than bolt on a one-off `Manager` table).
+
 ## Deferred
 
 - **Hosting platform:** not chosen. It must support hourly (point-in-time) SQL Server backups (PRD NFR-2, per AD-14). Chosen and recorded as an AD in Story 1.8.
