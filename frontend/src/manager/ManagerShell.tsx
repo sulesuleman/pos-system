@@ -1,19 +1,26 @@
 import { useState } from 'react'
-import AppBar from '@mui/material/AppBar'
-import Button from '@mui/material/Button'
-import Toolbar from '@mui/material/Toolbar'
-import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
-import { Outlet, useNavigate } from 'react-router-dom'
-import { ThemeToggleButton } from '../shared/common/Buttons/ThemeToggleButton'
+import Drawer from '@mui/material/Drawer'
+import { useNavigate } from 'react-router-dom'
 import { signOut } from '../shared/api/superAdminAuth'
+import { PageHeaderProvider } from './layout/PageHeaderProvider'
+import { PageLayout } from './layout/PageLayout'
+import { Sidebar } from './layout/Sidebar'
+import { SIDEBAR_EXPANDED_WIDTH } from './layout/constants'
+import { SUPER_ADMIN_NAV_ITEMS } from './layout/navConfig'
+import { useSidebarCollapsed } from './layout/useSidebarCollapsed'
+import { useManagerShellStyles } from './useManagerShellStyles'
 
-// Layout-only root for the Manager/Owner entry point: AppBar plus whichever route is active.
-// This is the exclusively-authenticated shell (post Story 1.2's routing fix), so sign-out lives
-// here rather than in any individual screen.
+// Layout-only root for the Manager/Owner entry point: a sidebar (Super Admin today; Owner/
+// Manager nav once those screens exist) alongside PageLayout, which owns the header and the one
+// surface that scrolls (see PageLayout). This is the exclusively-authenticated shell (post
+// Story 1.2's routing fix), so sign-out lives here rather than in any individual screen.
 export function ManagerShell() {
   const navigate = useNavigate()
   const [signingOut, setSigningOut] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const { collapsed, toggleCollapsed } = useSidebarCollapsed()
+  const styles = useManagerShellStyles({ sidebarCollapsed: collapsed })
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -24,26 +31,38 @@ export function ManagerShell() {
   }
 
   return (
-    <>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
-            Manager
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ThemeToggleButton sx={{ color: 'inherit' }} />
-            <Button
-              color="inherit"
-              onClick={() => void handleSignOut()}
-              disabled={signingOut}
-              data-testid="sign-out-button"
-            >
-              Sign out
-            </Button>
-          </Box>
-        </Toolbar>
-      </AppBar>
-      <Outlet />
-    </>
+    <PageHeaderProvider>
+      <Box sx={styles.root}>
+        <Box sx={styles.permanentSidebar}>
+          <Sidebar
+            items={SUPER_ADMIN_NAV_ITEMS}
+            collapsed={collapsed}
+            onToggleCollapsed={toggleCollapsed}
+            onSignOut={() => void handleSignOut()}
+            signingOut={signingOut}
+          />
+        </Box>
+
+        <Drawer
+          variant="temporary"
+          open={mobileNavOpen}
+          onClose={() => setMobileNavOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{ display: { xs: 'block', laptop: 'none' }, '& .MuiDrawer-paper': { width: SIDEBAR_EXPANDED_WIDTH } }}
+        >
+          <Sidebar
+            items={SUPER_ADMIN_NAV_ITEMS}
+            collapsed={false}
+            onNavigate={() => setMobileNavOpen(false)}
+            onSignOut={() => void handleSignOut()}
+            signingOut={signingOut}
+          />
+        </Drawer>
+
+        <Box sx={styles.contentColumn}>
+          <PageLayout onOpenMobileNav={() => setMobileNavOpen(true)} />
+        </Box>
+      </Box>
+    </PageHeaderProvider>
   )
 }

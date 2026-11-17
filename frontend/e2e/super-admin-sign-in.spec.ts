@@ -93,7 +93,9 @@ test('sign out clears the server session and redirects to sign-in', async ({ pag
   await signIn(page, testEmail, testPassword)
   await expect(page).toHaveURL(/\/super-admin$/)
 
-  await page.getByTestId('sign-out-button').click()
+  // Sign-out now lives in the sidebar, which renders twice (permanent + mobile drawer, MUI's
+  // standard responsive-drawer pattern) - the permanent one is first in DOM order.
+  await page.getByTestId('sign-out-button').first().click()
   await expect(page).toHaveURL(/\/super-admin\/sign-in$/)
 
   // Confirms the server-side session was actually cleared (not just local UI state) -

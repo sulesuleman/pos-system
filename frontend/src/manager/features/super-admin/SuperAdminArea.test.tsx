@@ -1,13 +1,24 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppThemeProvider } from '../../../shared/theme'
+import { Header } from '../../layout/Header'
+import { PageHeaderProvider } from '../../layout/PageHeaderProvider'
 import { SuperAdminArea } from './SuperAdminArea'
 import * as marts from '../../../shared/api/marts'
 
+// The "Create Mart" button now renders via the shell's Header (its page-specific `actions`
+// slot - see PageHeaderContext), not inside SuperAdminArea itself, so Header has to be mounted
+// alongside it for that button to actually appear in the DOM here.
 function renderArea() {
   return render(
     <AppThemeProvider>
-      <SuperAdminArea />
+      <MemoryRouter>
+        <PageHeaderProvider>
+          <Header onOpenMobileNav={() => {}} scrolled={false} />
+          <SuperAdminArea />
+        </PageHeaderProvider>
+      </MemoryRouter>
     </AppThemeProvider>,
   )
 }
@@ -17,7 +28,7 @@ describe('SuperAdminArea', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders the Marts heading and the Marts list', async () => {
+  it('renders the Marts list and the Create Mart button', async () => {
     vi.spyOn(marts, 'listMarts').mockResolvedValue({
       ok: true,
       marts: [{ id: '1', name: 'Mart A', code: 'ABC123', status: 'active' }],
@@ -25,7 +36,9 @@ describe('SuperAdminArea', () => {
 
     renderArea()
 
-    expect(screen.getByRole('heading', { name: 'Marts' })).toBeInTheDocument()
+    // The "Marts" heading itself now lives in the shell's Header (see PageHeaderContext), not
+    // in this component - this test stays scoped to what SuperAdminArea itself renders.
+    expect(screen.getByRole('button', { name: 'Create Mart' })).toBeInTheDocument()
     expect(await screen.findByText('Mart A')).toBeInTheDocument()
   })
 
