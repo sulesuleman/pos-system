@@ -10,10 +10,10 @@ const VALID_PASSWORD = 'Owner-Pass1!'
 function renderActivate() {
   return render(
     <AppThemeProvider>
-      <MemoryRouter initialEntries={['/owners/activate']}>
+      <MemoryRouter initialEntries={['/auth/activate']}>
         <Routes>
-          <Route path="/owners/activate" element={<OwnerActivatePage />} />
-          <Route path="/owners/sign-in" element={<div>owner sign-in page</div>} />
+          <Route path="/auth/activate" element={<OwnerActivatePage />} />
+          <Route path="/auth/sign-in" element={<div>owner sign-in page</div>} />
         </Routes>
       </MemoryRouter>
     </AppThemeProvider>,
@@ -62,7 +62,7 @@ describe('OwnerActivatePage', () => {
     expect(activateSpy).not.toHaveBeenCalled()
   })
 
-  it('navigates to /owners/sign-in with the activated flag on success', async () => {
+  it('navigates to /auth/sign-in with the activated flag on success', async () => {
     vi.spyOn(ownerAuth, 'activate').mockResolvedValue({ ok: true })
 
     renderActivate()

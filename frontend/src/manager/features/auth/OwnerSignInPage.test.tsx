@@ -5,12 +5,12 @@ import { AppThemeProvider } from '../../../shared/theme'
 import { OwnerSignInPage } from './OwnerSignInPage'
 import * as ownerAuth from '../../../shared/api/ownerAuth'
 
-function renderSignIn(initialEntries: Array<string | { pathname: string; state?: unknown }> = ['/owners/sign-in']) {
+function renderSignIn(initialEntries: Array<string | { pathname: string; state?: unknown }> = ['/auth/sign-in']) {
   return render(
     <AppThemeProvider>
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
-          <Route path="/owners/sign-in" element={<OwnerSignInPage />} />
+          <Route path="/auth/sign-in" element={<OwnerSignInPage />} />
           <Route path="/owner" element={<div>owner area</div>} />
         </Routes>
       </MemoryRouter>
@@ -88,7 +88,7 @@ describe('OwnerSignInPage', () => {
   it('shows the activation banner when navigated here right after activating', async () => {
     vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
 
-    renderSignIn([{ pathname: '/owners/sign-in', state: { activated: true } }])
+    renderSignIn([{ pathname: '/auth/sign-in', state: { activated: true } }])
 
     expect(await screen.findByTestId('owner-sign-in-activated-banner')).toHaveTextContent(
       'Account activated. Sign in with your new password.',

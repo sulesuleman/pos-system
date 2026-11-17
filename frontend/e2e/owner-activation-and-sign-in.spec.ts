@@ -65,7 +65,7 @@ test.afterAll(() => {
 })
 
 async function activate(page: Page) {
-  await page.goto('/owners/activate')
+  await page.goto('/auth/activate')
   await page.getByTestId('owner-activate-mart-code-input').fill(martCode)
   await page.getByTestId('owner-activate-email-input').fill(ownerEmail)
   await page.getByTestId('owner-activate-setup-code-input').fill(setupCode)
@@ -74,7 +74,7 @@ async function activate(page: Page) {
 }
 
 async function signIn(page: Page, code: string, email: string, password: string) {
-  await page.goto('/owners/sign-in')
+  await page.goto('/auth/sign-in')
   await page.getByTestId('owner-sign-in-mart-code-input').fill(code)
   await page.getByTestId('owner-sign-in-email-input').fill(email)
   await page.getByTestId('owner-sign-in-password-input').fill(password)
@@ -84,7 +84,7 @@ async function signIn(page: Page, code: string, email: string, password: string)
 test('activating with the real setup code redirects to sign-in with the activated banner', async ({ page }) => {
   await activate(page)
 
-  await expect(page).toHaveURL(/\/owners\/sign-in$/)
+  await expect(page).toHaveURL(/\/auth\/sign-in$/)
   await expect(page.getByTestId('owner-sign-in-activated-banner')).toBeVisible()
 })
 
@@ -103,14 +103,14 @@ test('signing in with the new password redirects to /owner, and the session surv
 test('signing in with the wrong password shows a generic error and stays on sign-in', async ({ page }) => {
   await signIn(page, martCode, ownerEmail, 'not-the-right-password')
 
-  await expect(page).toHaveURL(/\/owners\/sign-in$/)
+  await expect(page).toHaveURL(/\/auth\/sign-in$/)
   await expect(page.getByTestId('owner-sign-in-error')).toHaveText("That Mart code, email or password isn't right.")
 })
 
 test('visiting /owner with no session redirects to owner sign-in', async ({ page }) => {
   await page.goto('/owner')
 
-  await expect(page).toHaveURL(/\/owners\/sign-in$/)
+  await expect(page).toHaveURL(/\/auth\/sign-in$/)
 })
 
 test('owner sign-out clears the server session and redirects to owner sign-in', async ({ page }) => {
@@ -118,8 +118,8 @@ test('owner sign-out clears the server session and redirects to owner sign-in', 
   await expect(page).toHaveURL(/\/owner$/)
 
   await page.getByTestId('sign-out-button').first().click()
-  await expect(page).toHaveURL(/\/owners\/sign-in$/)
+  await expect(page).toHaveURL(/\/auth\/sign-in$/)
 
   await page.goto('/owner')
-  await expect(page).toHaveURL(/\/owners\/sign-in$/)
+  await expect(page).toHaveURL(/\/auth\/sign-in$/)
 })

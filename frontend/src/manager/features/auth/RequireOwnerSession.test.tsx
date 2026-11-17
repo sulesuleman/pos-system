@@ -18,7 +18,7 @@ function renderGuarded() {
             </RequireOwnerSession>
           }
         />
-        <Route path="/owners/sign-in" element={<div>owner sign-in page</div>} />
+        <Route path="/auth/sign-in" element={<div>owner sign-in page</div>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -46,7 +46,7 @@ describe('RequireOwnerSession', () => {
     expect(await screen.findByText('protected content')).toBeInTheDocument()
   })
 
-  it('redirects to /owners/sign-in once the session is invalid', async () => {
+  it('redirects to /auth/sign-in once the session is invalid', async () => {
     vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
 
     renderGuarded()

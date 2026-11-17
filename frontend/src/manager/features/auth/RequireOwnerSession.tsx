@@ -10,7 +10,9 @@ type SessionStatus = 'pending' | 'valid' | 'invalid'
 // Route guard for /owner: calls getSession() once on mount. While pending, renders a loading
 // placeholder (never the protected children, never a redirect) so protected content never
 // flashes before the session check settles. Same shape as RequireSession, kept separate because
-// Owner and Super Admin are different session types (distinct cookies, distinct sign-in routes).
+// Owner and Super Admin are different session types (distinct cookies, distinct sign-in routes -
+// /auth/sign-in for Owner, deliberately not /owners/sign-in, so the route itself gives no hint
+// that a separate Super Admin sign-in exists).
 export function RequireOwnerSession({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('pending')
 
@@ -39,7 +41,7 @@ export function RequireOwnerSession({ children }: { children: ReactNode }) {
   }
 
   if (status === 'invalid') {
-    return <Navigate to="/owners/sign-in" replace />
+    return <Navigate to="/auth/sign-in" replace />
   }
 
   return <>{children}</>

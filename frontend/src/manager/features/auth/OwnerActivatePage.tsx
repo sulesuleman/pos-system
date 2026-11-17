@@ -105,7 +105,7 @@ export function OwnerActivatePage() {
     setSubmitting(false)
 
     if (result.ok) {
-      navigate('/owners/sign-in', { replace: true, state: { activated: true } })
+      navigate('/auth/sign-in', { replace: true, state: { activated: true } })
       return
     }
     if (result.reason === 'weak-password') {

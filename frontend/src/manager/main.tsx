@@ -19,15 +19,17 @@ createRoot(document.getElementById('root')!).render(
     <AppThemeProvider>
       <BrowserRouter>
         <Routes>
-          {/* Still temporary: Owner sign-in now exists at /owners/sign-in, but there's no
-              chooser between it and Super Admin sign-in yet - a later story adds one. */}
-          <Route path="/" element={<Navigate to="/super-admin/sign-in" replace />} />
+          {/* Owner/Manager sign-in is the default landing - Super Admin has no link to reach
+              their own sign-in from here and must know to type /super-admin/sign-in directly.
+              The route itself is /auth/sign-in (not /owners/sign-in) on purpose - generic,
+              giving no hint that a separate Super Admin sign-in route exists at all. */}
+          <Route path="/" element={<Navigate to="/auth/sign-in" replace />} />
           {/* Sign-in/activation screens own their own full-bleed layout (hero panel + theme
               toggle) and are shown before anyone is authenticated, so they're never wrapped in
               ManagerShell's app bar — that bar belongs to the authenticated areas only. */}
           <Route path="/super-admin/sign-in" element={<SignInPage />} />
-          <Route path="/owners/activate" element={<OwnerActivatePage />} />
-          <Route path="/owners/sign-in" element={<OwnerSignInPage />} />
+          <Route path="/auth/activate" element={<OwnerActivatePage />} />
+          <Route path="/auth/sign-in" element={<OwnerSignInPage />} />
           <Route
             element={
               <ManagerShell
@@ -48,7 +50,7 @@ createRoot(document.getElementById('root')!).render(
           </Route>
           <Route
             element={
-              <ManagerShell navItems={OWNER_NAV_ITEMS} onSignOut={signOutOwner} signOutRedirectPath="/owners/sign-in" />
+              <ManagerShell navItems={OWNER_NAV_ITEMS} onSignOut={signOutOwner} signOutRedirectPath="/auth/sign-in" />
             }
           >
             <Route
@@ -60,7 +62,7 @@ createRoot(document.getElementById('root')!).render(
               }
             />
           </Route>
-          <Route path="*" element={<Navigate to="/super-admin/sign-in" replace />} />
+          <Route path="*" element={<Navigate to="/auth/sign-in" replace />} />
         </Routes>
       </BrowserRouter>
     </AppThemeProvider>
