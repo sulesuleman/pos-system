@@ -44,4 +44,5 @@ Each entry point (`manager/`, `counter/`) organizes its own screens under `src/<
 
 ## Scrollbars
 
-- Scrollable containers keep their scrollbar's layout space reserved (no content reflow) but hide the scrollbar visually until the user hovers that container; it appears on hover and hides again on mouse-leave.
+- Scrollable containers hide the scrollbar visually until the user hovers that container; it appears on hover and hides again on mouse-leave.
+- Deliberately no global scrollbar-gutter reservation (plain `overflow-y: auto`, not `scrollbar-gutter: stable`, applied globally): reserving a scrollbar's width ahead of time avoids reflow when the bar appears, but only on the one element that scrolls, never on its non-scrolling siblings - and a scrollable box in this app almost always sits beside one that must match its width exactly (a dialog's content vs. its actions row, a sheet's content vs. its footer, a nav list vs. its sign-out row). That one-sided reservation caused three separate width-mismatch bugs (2026-11-17), so this app accepts the occasional reflow-on-scrollbar-appearance instead of permanently misaligned siblings. A component that deliberately needs the gutter reserved for its own reason (e.g. keeping its own content centered through a scroll) can still set `scrollbarGutter` itself - just not as a global default.

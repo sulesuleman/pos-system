@@ -20,6 +20,12 @@ export function drawer(theme: Theme) {
           ...sheet,
           border: `1px solid ${theme.palette.divider}`,
           zIndex: theme.zIndex.drawer,
+          // MUI's own base paper CSS sets only `overflow-y: auto`, never `overflow-x` - but per
+          // the CSS overflow spec, a `visible` axis paired with a non-`visible` one computes to
+          // `auto` too, so the browser quietly adds a horizontal scrollbar the moment a vertical
+          // one reserves its own width and leaves a fixed-width child those few pixels too wide.
+          // A drawer's width is always intentional; it should never scroll sideways over that.
+          overflowX: 'hidden',
           '&.MuiDrawer-paperAnchorLeft, &.MuiDrawer-paperAnchorRight': sheet,
           '&.MuiDrawer-paperAnchorTop, &.MuiDrawer-paperAnchorBottom': sheet,
           ...((ownerState.variant === 'temporary' ||
