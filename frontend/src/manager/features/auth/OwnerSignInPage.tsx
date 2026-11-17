@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
+import Link from '@mui/material/Link'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
@@ -183,6 +184,13 @@ export function OwnerSignInPage() {
                 {submitting ? <CircularProgress size={24} color="inherit" /> : 'Sign in'}
               </Button>
             </Stack>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 3, textAlign: 'center' }}>
+              First time here?{' '}
+              <Link component={RouterLink} to="/auth/activate" data-testid="owner-sign-in-activate-link">
+                Activate your account
+              </Link>
+            </Typography>
           </Box>
         </Box>
       </Box>

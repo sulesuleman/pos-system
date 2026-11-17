@@ -11,6 +11,7 @@ function renderSignIn(initialEntries: Array<string | { pathname: string; state?:
       <MemoryRouter initialEntries={initialEntries}>
         <Routes>
           <Route path="/auth/sign-in" element={<OwnerSignInPage />} />
+          <Route path="/auth/activate" element={<div>activate page</div>} />
           <Route path="/owner" element={<div>owner area</div>} />
         </Routes>
       </MemoryRouter>
@@ -102,5 +103,15 @@ describe('OwnerSignInPage', () => {
     await screen.findByLabelText(/Mart code/)
 
     expect(screen.queryByTestId('owner-sign-in-activated-banner')).not.toBeInTheDocument()
+  })
+
+  it('links to the activation screen for a first-time Owner', async () => {
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+
+    renderSignIn()
+    await screen.findByLabelText(/Mart code/)
+    fireEvent.click(screen.getByTestId('owner-sign-in-activate-link'))
+
+    expect(await screen.findByText('activate page')).toBeInTheDocument()
   })
 })
