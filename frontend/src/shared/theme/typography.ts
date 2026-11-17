@@ -19,7 +19,11 @@ const heading = (size: [number, number], lineHeight: [number, number]) => ({
   '@media (min-width:900px)': { fontSize: pxToRem(size[1]), lineHeight: `${lineHeight[1]}px` },
 })
 
-const FONT = "'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif"
+// Adapted from the same source repo's theme (see frontend/CLAUDE.md): SuisseIntl everywhere,
+// 'Agrandir' and 'Power Grotesk' (font.css) are loaded for display use (e.g. sign-in) but
+// deliberately not wired in here - they're applied directly via `sx={{ fontFamily: ... }}`
+// where used, not as a theme-wide default.
+const FONT = "'SuisseIntl', 'Inter', 'Roboto', 'Helvetica Neue', Arial, sans-serif"
 
 export const typography = {
   // the default for anything that reads theme.typography.fontFamily instead of a variant

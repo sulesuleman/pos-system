@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { CssBaseline, ThemeProvider, createTheme, type Theme, type ThemeOptions } from '@mui/material'
+import './font.css'
 import { customShadows } from './customShadows'
 import { componentsOverrides } from './overrides'
 import { palette } from './palette'

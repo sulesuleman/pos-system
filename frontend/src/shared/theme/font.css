@@ -1,0 +1,48 @@
+@font-face {
+  font-family: 'SuisseIntl';
+  src: url('/fonts/SuisseIntl/SuisseIntl-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SuisseIntl';
+  src: url('/fonts/SuisseIntl/SuisseIntl-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SuisseIntl';
+  src: url('/fonts/SuisseIntl/SuisseIntl-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'SuisseIntl';
+  src: url('/fonts/SuisseIntl/SuisseIntl-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Agrandir';
+  src: url('/fonts/Agrandir.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The sign-in page's display face (title and quote) only - not a text style of the theme. */
+@font-face {
+  font-family: 'Power Grotesk';
+  src: url('/fonts/PowerGrotesk-Login.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
