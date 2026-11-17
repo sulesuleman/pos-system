@@ -7,7 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Api.Modules.Identity.Endpoints;
 
-public static class OwnerAuthEndpoints
+// Shared activate/sign-in/sign-out/session for every email+password Role (Owner, Manager) -
+// renamed and generalized from OwnerAuthEndpoints. The flow is identical for both Roles and
+// differs only in which Role the found User has, so one implementation serves both (AD-15).
+// Counter-role (Cashier) login is Staff ID + PIN, a structurally different flow, and stays its
+// own separate endpoint once built.
+public static class AuthEndpoints
 {
     // One message for every rejection path in activate/sign-in, so none of them accidentally
     // reveals which specific part (Mart code, email, setup code, password) was wrong.
@@ -17,15 +22,15 @@ public static class OwnerAuthEndpoints
     private static readonly Regex PasswordPattern =
         new(@"^(?=.*[0-9])(?=.*[^a-zA-Z0-9\s])(?=.*[a-z])(?=.*[A-Z]).{8,}$");
 
-    public static void MapOwnerAuthEndpoints(this IEndpointRouteBuilder group)
+    public static void MapAuthEndpoints(this IEndpointRouteBuilder group)
     {
-        group.MapPost("/owners/activate", ActivateAsync);
-        group.MapPost("/owners/sign-in", SignInAsync);
-        group.MapPost("/owners/sign-out", SignOut);
-        group.MapGet("/owners/session", GetSession);
+        group.MapPost("/auth/activate", ActivateAsync);
+        group.MapPost("/auth/sign-in", SignInAsync);
+        group.MapPost("/auth/sign-out", SignOut);
+        group.MapGet("/auth/session", GetSession);
     }
 
-    private static async Task<IResult> ActivateAsync(ActivateOwnerRequest request, AppDbContext db)
+    private static async Task<IResult> ActivateAsync(ActivateUserRequest request, AppDbContext db)
     {
         if (string.IsNullOrEmpty(request.MartCode)
             || string.IsNullOrEmpty(request.Email)
@@ -43,21 +48,21 @@ public static class OwnerAuthEndpoints
             return Results.BadRequest(new { error = GenericError });
         }
 
-        var owner = await db.Owners
+        var user = await db.Users
             .IgnoreQueryFilters()
-            .SingleOrDefaultAsync(o => o.MartId == mart.Id && o.Email == request.Email);
+            .SingleOrDefaultAsync(u => u.MartId == mart.Id && u.Email == request.Email);
 
-        if (owner is null)
+        if (user is null || user.SetupCodeHash is null)
         {
             return Results.BadRequest(new { error = GenericError });
         }
 
-        var hasher = new PasswordHasher<Owner>();
-        var setupCodeResult = hasher.VerifyHashedPassword(owner, owner.SetupCodeHash, request.SetupCode);
+        var hasher = new PasswordHasher<User>();
+        var setupCodeResult = hasher.VerifyHashedPassword(user, user.SetupCodeHash, request.SetupCode);
 
         if (setupCodeResult == PasswordVerificationResult.Failed
-            || owner.SetupCodeUsedAtUtc is not null
-            || owner.SetupCodeExpiresAtUtc <= DateTime.UtcNow)
+            || user.SetupCodeUsedAtUtc is not null
+            || user.SetupCodeExpiresAtUtc <= DateTime.UtcNow)
         {
             return Results.BadRequest(new { error = GenericError });
         }
@@ -70,39 +75,38 @@ public static class OwnerAuthEndpoints
             });
         }
 
-        owner.PasswordHash = hasher.HashPassword(owner, request.Password);
-        owner.SetupCodeUsedAtUtc = DateTime.UtcNow;
+        user.PasswordHash = hasher.HashPassword(user, request.Password);
+        user.SetupCodeUsedAtUtc = DateTime.UtcNow;
         await db.SaveChangesAsync();
 
         return Results.Ok();
     }
 
-    // Stubs for now - filled in once we get to the sign-in step.
-    private static async Task<IResult> SignInAsync(SignInOwnerRequest request, AppDbContext db, HttpContext httpContext)
+    private static async Task<IResult> SignInAsync(SignInUserRequest request, AppDbContext db, HttpContext httpContext)
     {
         var martCode = request.MartCode.Trim().ToUpperInvariant();
         var mart = await db.Marts.SingleOrDefaultAsync(m => m.Code == martCode);
 
-        Owner? owner = null;
+        User? user = null;
         if (mart is not null && mart.Status != MartStatus.Suspended)
         {
-            owner = await db.Owners
+            user = await db.Users
                 .IgnoreQueryFilters()
-                .SingleOrDefaultAsync(o => o.MartId == mart.Id && o.Email == request.Email);
+                .SingleOrDefaultAsync(u => u.MartId == mart.Id && u.Email == request.Email);
         }
 
-        var hasher = new PasswordHasher<Owner>();
-        var verifyResult = owner is null || owner.PasswordHash is null
+        var hasher = new PasswordHasher<User>();
+        var verifyResult = user is null || user.PasswordHash is null
             ? PasswordVerificationResult.Failed
-            : hasher.VerifyHashedPassword(owner, owner.PasswordHash, request.Password);
+            : hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
 
-        if (owner is null || owner.PasswordHash is null || verifyResult == PasswordVerificationResult.Failed)
+        if (user is null || user.PasswordHash is null || verifyResult == PasswordVerificationResult.Failed)
         {
             db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
             {
                 Id = Guid.NewGuid(),
                 OccurredAtUtc = DateTime.UtcNow,
-                Action = "OwnerSignInFailed",
+                Action = "UserSignInFailed",
                 AttemptedEmail = request.Email,
                 AttemptedMartCode = martCode,
                 IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
@@ -112,14 +116,14 @@ public static class OwnerAuthEndpoints
             return Results.Unauthorized();
         }
 
-        httpContext.Session.SetString("OwnerId", owner.Id.ToString());
+        httpContext.Session.SetString("UserId", user.Id.ToString());
         httpContext.Session.SetString("MartId", mart!.Id.ToString());
 
         db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
         {
             Id = Guid.NewGuid(),
             OccurredAtUtc = DateTime.UtcNow,
-            Action = "OwnerSignInSucceeded",
+            Action = "UserSignInSucceeded",
             AttemptedEmail = request.Email,
             AttemptedMartCode = martCode,
             IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
@@ -127,15 +131,17 @@ public static class OwnerAuthEndpoints
         });
         await db.SaveChangesAsync();
 
+        var role = await db.Roles.IgnoreQueryFilters().SingleAsync(r => r.Id == user.RoleId);
+
         return Results.Ok(new
         {
-            ownerId = owner.Id,
+            userId = user.Id,
             martId = mart.Id,
             martName = mart.Name,
-            firstName = owner.FirstName,
-            lastName = owner.LastName,
+            firstName = user.FirstName,
+            lastName = user.LastName,
+            role = role.Name,
         });
-
     }
 
     private static async Task<IResult> SignOut(HttpContext httpContext, AppDbContext db)
@@ -144,7 +150,7 @@ public static class OwnerAuthEndpoints
         {
             Id = Guid.NewGuid(),
             OccurredAtUtc = DateTime.UtcNow,
-            Action = "OwnerSignOut",
+            Action = "UserSignOut",
             IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
             UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
         });
@@ -154,38 +160,40 @@ public static class OwnerAuthEndpoints
         return Results.NoContent();
     }
 
-
     private static async Task<IResult> GetSession(HttpContext httpContext, AppDbContext db)
     {
-        var ownerIdValue = httpContext.Session.GetString("OwnerId");
+        var userIdValue = httpContext.Session.GetString("UserId");
         var martIdValue = httpContext.Session.GetString("MartId");
 
-        if (ownerIdValue is null || martIdValue is null)
+        if (userIdValue is null || martIdValue is null)
         {
             return Results.Unauthorized();
         }
 
-        var owner = await db.Owners
+        var user = await db.Users
             .IgnoreQueryFilters()
-            .SingleOrDefaultAsync(o => o.Id == Guid.Parse(ownerIdValue));
+            .SingleOrDefaultAsync(u => u.Id == Guid.Parse(userIdValue));
         var mart = await db.Marts.SingleOrDefaultAsync(m => m.Id == Guid.Parse(martIdValue));
 
-        if (owner is null || mart is null)
+        if (user is null || mart is null)
         {
             return Results.Unauthorized();
         }
+
+        var role = await db.Roles.IgnoreQueryFilters().SingleAsync(r => r.Id == user.RoleId);
 
         return Results.Ok(new
         {
-            ownerId = owner.Id,
+            userId = user.Id,
             martId = mart.Id,
             martName = mart.Name,
-            firstName = owner.FirstName,
-            lastName = owner.LastName,
+            firstName = user.FirstName,
+            lastName = user.LastName,
+            role = role.Name,
         });
     }
 }
 
-public record ActivateOwnerRequest(string MartCode, string Email, string SetupCode, string Password);
+public record ActivateUserRequest(string MartCode, string Email, string SetupCode, string Password);
 
-public record SignInOwnerRequest(string MartCode, string Email, string Password);
+public record SignInUserRequest(string MartCode, string Email, string Password);

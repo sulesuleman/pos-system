@@ -92,20 +92,22 @@ Rename/generalize `OwnerAuthEndpoints.cs` → e.g. `AuthEndpoints.cs`, routes `/
 
 ## Tasks
 
-- [ ] Migration 1: `AddRolesTable` (create table + seed 3 rows).
-- [ ] Migration 2: `ConvertOwnersToUsers` (rename table, add/backfill `RoleId`, nullable `Email`/`SetupCodeHash`/`SetupCodeExpiresAtUtc`, drop old `Role` column, add FKs). Apply against the local `PosSystem` database — confirm the existing Imtiaz Cash and Carry Owner row survives with `RoleId` correctly backfilled to the Owner Role.
-- [ ] `User.cs`, `Role.cs`, `RoleIds.cs` (static class with the 3 fixed GUIDs).
-- [ ] `AppDbContext` updates: `DbSet<User>`, `DbSet<Role>`, query filters, indexes, FK configuration.
-- [ ] `StaffIdGenerator` repointed at `db.Users`.
-- [ ] `MartsEndpoints.CreateMart` repointed at `User`/`RoleId = RoleIds.Owner`.
-- [ ] Rename `OwnerAuthEndpoints.cs` → `AuthEndpoints.cs`; rewrite `activate`/`sign-in`/`sign-out`/`session` role-agnostically against `Users`; session keys `"UserId"`/`"MartId"`; `sign-in`/`session` responses gain `role`.
-- [ ] Update `Program.cs`: `v1.MapOwnerAuthEndpoints()` → `v1.MapAuthEndpoints()`.
-- [ ] New `POST /api/v1/staff` (create Manager) + `GET /api/v1/staff` (list), Owner-authenticated.
-- [ ] Tests: everything `OwnerAuthEndpointTests.cs` already covers, repointed at the renamed routes/Users table; plus new coverage for Manager specifically — a Manager can activate/sign in through the same endpoints as an Owner, `GET /staff` requires an Owner session (not just any signed-in User), a Manager created without Branch assignment works end-to-end, and the migration itself (apply against a fresh DB + confirm the existing live row migrates correctly).
-- [ ] Decide: should `GET /staff` be reachable by anyone signed in, or Owner-only? (Leaning Owner-only for now, since "manage staff" as a granted Permission is Story 2.1's unbuilt remainder.)
+All done 2026-11-17. Per the user's explicit "do everything yourself" instruction, Claude implemented this slice directly (one-off exception to the standing arrangement — see [[backend-user-implements]]).
+
+- [x] Migration: `AddRolesAndConvertOwnersToUsers` — one migration, not two (EF scaffolds the whole model diff in one shot once the C# model already reflects both changes; splitting it would've meant juggling two half-migrated model states). Scaffolded once, then hand-edited: the auto-generated `Up()` did `DropTable("Owners")` + `CreateTable("Users")` (data loss on the live row), rewritten to `RenameTable` + `AddColumn`(nullable) + SQL backfill + `AlterColumn`(not-null) + `DropColumn("Role")`, matching the checklist's planned rename-in-place strategy. Designer/snapshot hand-patched to match; `dotnet ef migrations has-pending-model-changes` confirms no drift.
+- [x] Applied against the local `PosSystem` database — confirmed live: all 3 existing Owner rows (including Imtiaz Cash and Carry, Mart code `NE3HWF`) backfilled to `RoleId = RoleIds.Owner`, the already-activated one keeping its `PasswordHash`.
+- [x] `User.cs` (renamed from `Owner.cs`), `Role.cs`, `RoleIds.cs`.
+- [x] `AppDbContext`: `DbSet<User>`, `DbSet<Role>`, query filters (`Role`'s is `MartId == null || MartId == _currentMartId` — global roles visible everywhere), indexes, FK configuration. **One deviation from the plan:** `CreatedByUserId`'s FK uses `DeleteBehavior.Restrict`, not the planned `SetNull` — SQL Server rejected `ON DELETE SET NULL` on a self-referencing FK combined with the `RoleId` FK on the same table ("may cause cycles or multiple cascade paths"). Restrict is consistent with `RoleId`'s own FK and arguably safer (deleting a User who created others is blocked loudly, not silently nulled out).
+- [x] `StaffIdGenerator` repointed at `db.Users`.
+- [x] `SetupCodeGenerator` (renamed from `OwnerSetupCodeGenerator`, now `PasswordHasher<User>`).
+- [x] `MartsEndpoints.CreateMart` repointed at `User`/`RoleId = RoleIds.Owner`.
+- [x] `AuthEndpoints.cs` (renamed from `OwnerAuthEndpoints.cs`): `activate`/`sign-in`/`sign-out`/`session` role-agnostic against `Users`; session keys `"UserId"`/`"MartId"`; `sign-in`/`session` responses gain `role` (joined from `Roles.Name`). Routes moved `/owners/*` → `/auth/*`.
+- [x] `Program.cs`: `v1.MapOwnerAuthEndpoints()` → `v1.MapAuthEndpoints()`, added `v1.MapStaffEndpoints()`.
+- [x] `StaffEndpoints.cs`: `POST /api/v1/staff` (Owner-only — checks the signed-in User's `RoleId == RoleIds.Owner`, not just "is signed in"; creates a `User` with `RoleId = RoleIds.Manager`, `CreatedByUserId` = the Owner) and `GET /api/v1/staff` (Owner-only, lists the Mart's Users joined to Role name — **decided:** includes the Owner's own row, since there was no reason to hide it and the test asserts both appear).
+- [x] Tests: `AuthEndpointTests.cs` (renamed from `OwnerAuthEndpointTests.cs`, all prior coverage repointed at `/auth/*`/`Users`) plus new: a Manager activates/signs in through the identical shared endpoints and gets `role: "Manager"` back; `POST /staff` rejects no session and rejects a signed-in Manager (Owner-only enforcement); `GET /staff` lists both the Owner and a created Manager. `TenantIsolationTests.cs` repointed at `Users`. Full suite: **51/51 passing** (46 API + 5 integration), `dotnet build` clean, live route smoke-check against the real dev server confirms `/auth/*`/`/staff` exist and reject unauthenticated requests while `/owners/*` 404s.
+- Not done (explicitly out of scope, per the locked decisions above): Branch assignment, custom-Role/Permission CRUD, Counter-role Staff ID + PIN creation/login.
 
 ## Notes
 
-- Frontend half (Staff screen for Owner to create a Manager, Manager sign-in reusing the existing generic sign-in screen, Manager's landing area) is tracked separately once the backend endpoints above exist — same split as every prior story.
-- The frontend's `shared/api/ownerAuth.ts`/`OwnerSignInPage.tsx`/`OwnerActivatePage.tsx` will need to generalize into role-agnostic equivalents once `/auth/*` exists server-side (today they still call `/owners/*`, which this story removes) — that's Claude's job, tracked alongside the Staff screen.
+- Frontend half (Staff screen for Owner to create a Manager, Manager sign-in reusing a generalized sign-in screen, Manager's landing area) is next — tracked separately, same split as every prior story. The frontend's `shared/api/ownerAuth.ts`/`OwnerSignInPage.tsx`/`OwnerActivatePage.tsx` need to generalize into role-agnostic equivalents now that the backend serves `/auth/*`, not `/owners/*`.
 - Epic 2's remaining scope (full custom-Role/Permission CRUD, Branch assignment, Counter-role Staff ID + PIN creation/login, device registration) stays backlog — this slice only unblocks Manager.

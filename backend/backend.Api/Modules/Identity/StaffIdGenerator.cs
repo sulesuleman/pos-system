@@ -7,10 +7,10 @@ public static class StaffIdGenerator
 {
     public static async Task<int> GenerateNextAsync(AppDbContext db, Guid martId)
     {
-        var maxExisting = await db.Owners
+        var maxExisting = await db.Users
             .IgnoreQueryFilters()
-            .Where(o => o.MartId == martId)
-            .Select(o => (int?)o.StaffId)
+            .Where(u => u.MartId == martId)
+            .Select(u => (int?)u.StaffId)
             .MaxAsync();
 
         return (maxExisting ?? 0) + 1;

@@ -22,69 +22,6 @@ namespace backend.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("backend.Api.Modules.Identity.Domain.Owner", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Cnic")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Contact")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("MartId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("SetupCodeExpiresAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("SetupCodeHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime?>("SetupCodeUsedAtUtc")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("StaffId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("MartId", "Email")
-                        .IsUnique();
-
-                    b.HasIndex("MartId", "StaffId")
-                        .IsUnique();
-
-                    b.ToTable("Owners");
-                });
-
             modelBuilder.Entity("backend.Api.Modules.Identity.Domain.PlatformAuditLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -118,6 +55,57 @@ namespace backend.Api.Migrations
                     b.ToTable("PlatformAuditLogEntries");
                 });
 
+            modelBuilder.Entity("backend.Api.Modules.Identity.Domain.Role", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsSystemDefault")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("MartId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MartId", "Name")
+                        .IsUnique()
+                        .HasFilter("[MartId] IS NOT NULL");
+
+                    b.ToTable("Roles");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000001"),
+                            CreatedAtUtc = new DateTime(2026, 11, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsSystemDefault = true,
+                            Name = "Owner"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000002"),
+                            CreatedAtUtc = new DateTime(2026, 11, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsSystemDefault = true,
+                            Name = "Manager"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000003"),
+                            CreatedAtUtc = new DateTime(2026, 11, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsSystemDefault = true,
+                            Name = "Cashier"
+                        });
+                });
+
             modelBuilder.Entity("backend.Api.Modules.Identity.Domain.SuperAdmin", b =>
                 {
                     b.Property<Guid>("Id")
@@ -141,6 +129,77 @@ namespace backend.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("SuperAdmins");
+                });
+
+            modelBuilder.Entity("backend.Api.Modules.Identity.Domain.User", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Cnic")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Contact")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("MartId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PinHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("SetupCodeExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SetupCodeHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SetupCodeUsedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StaffId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("RoleId");
+
+                    b.HasIndex("MartId", "Email")
+                        .IsUnique()
+                        .HasFilter("[Email] IS NOT NULL");
+
+                    b.HasIndex("MartId", "StaffId")
+                        .IsUnique();
+
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("backend.Api.Modules.Tenancy.Domain.Branch", b =>
@@ -192,6 +251,20 @@ namespace backend.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Marts");
+                });
+
+            modelBuilder.Entity("backend.Api.Modules.Identity.Domain.User", b =>
+                {
+                    b.HasOne("backend.Api.Modules.Identity.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("backend.Api.Modules.Identity.Domain.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("backend.Api.Modules.Tenancy.Domain.Branch", b =>

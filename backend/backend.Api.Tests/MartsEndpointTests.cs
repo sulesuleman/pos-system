@@ -180,9 +180,9 @@ public class MartsEndpointTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var martId = Guid.Parse(body.GetProperty("martId").GetString()!);
 
-        var owner = await db.Owners.IgnoreQueryFilters().SingleAsync(o => o.MartId == martId);
+        var owner = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.MartId == martId);
         Assert.Equal("1234512345671", owner.Cnic); // stored digits-only, dashes stripped
-        Assert.Equal("Owner", owner.Role);
+        Assert.Equal(backend.Api.Modules.Identity.RoleIds.Owner, owner.RoleId);
         Assert.Null(owner.PasswordHash);
     }
 

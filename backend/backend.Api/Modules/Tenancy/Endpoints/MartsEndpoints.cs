@@ -78,13 +78,14 @@ namespace backend.Api.Modules.Tenancy.Endpoints;
             db.Marts.Add(mart);
 
             var staffId = await StaffIdGenerator.GenerateNextAsync(db, mart.Id);
-            var setupCode = OwnerSetupCodeGenerator.Generate();
+            var setupCode = SetupCodeGenerator.Generate();
 
-            var owner = new Owner
+            var owner = new User
             {
                 Id = Guid.NewGuid(),
                 MartId = mart.Id,
                 StaffId = staffId,
+                RoleId = RoleIds.Owner,
                 FirstName = request.OwnerFirstName.Trim(),
                 LastName = request.OwnerLastName.Trim(),
                 Email = request.OwnerEmail.Trim(),
@@ -94,7 +95,7 @@ namespace backend.Api.Modules.Tenancy.Endpoints;
                 SetupCodeExpiresAtUtc = setupCode.ExpiresAtUtc,
                 CreatedAtUtc = DateTime.UtcNow,
             };
-            db.Owners.Add(owner);
+            db.Users.Add(owner);
 
             db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
             {

@@ -1,3 +1,4 @@
+using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy;
 using backend.Api.Modules.Tenancy.Domain;
@@ -24,7 +25,8 @@ public class AppDbContext : DbContext
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<SuperAdmin> SuperAdmins => Set<SuperAdmin>();
     public DbSet<PlatformAuditLogEntry> PlatformAuditLogEntries => Set<PlatformAuditLogEntry>();
-    public DbSet<Owner> Owners => Set<Owner>();     
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Role> Roles => Set<Role>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -36,16 +38,49 @@ public class AppDbContext : DbContext
             .HasIndex(m => m.Code)
             .IsUnique();
 
-        modelBuilder.Entity<Owner>()
-            .HasIndex(o => new { o.MartId, o.StaffId })
+        modelBuilder.Entity<User>()
+            .HasIndex(u => new { u.MartId, u.StaffId })
             .IsUnique();
 
-        modelBuilder.Entity<Owner>()
-            .HasQueryFilter(o => o.MartId == _currentMartId);
+        modelBuilder.Entity<User>()
+            .HasQueryFilter(u => u.MartId == _currentMartId);
 
-        modelBuilder.Entity<Owner>()
-            .HasIndex(o => new { o.MartId, o.Email })
+        modelBuilder.Entity<User>()
+            .HasIndex(u => new { u.MartId, u.Email })
             .IsUnique();
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.RoleId);
+
+        modelBuilder.Entity<User>()
+            .HasOne<Role>()
+            .WithMany()
+            .HasForeignKey(u => u.RoleId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // SQL Server rejects ON DELETE SET NULL on this self-referencing FK when combined with
+        // the RoleId FK on the same table ("may cause cycles or multiple cascade paths") -
+        // Restrict instead: deleting a User who created other Users is blocked at the DB level
+        // rather than silently nulling CreatedByUserId out from under them.
+        modelBuilder.Entity<User>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(u => u.CreatedByUserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Role>()
+            .HasQueryFilter(r => r.MartId == null || r.MartId == _currentMartId);
+
+        modelBuilder.Entity<Role>()
+            .HasIndex(r => new { r.MartId, r.Name })
+            .IsUnique()
+            .HasFilter("[MartId] IS NOT NULL");
+
+        var seedTimestamp = new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        modelBuilder.Entity<Role>().HasData(
+            new Role { Id = RoleIds.Owner, MartId = null, Name = "Owner", IsSystemDefault = true, CreatedAtUtc = seedTimestamp },
+            new Role { Id = RoleIds.Manager, MartId = null, Name = "Manager", IsSystemDefault = true, CreatedAtUtc = seedTimestamp },
+            new Role { Id = RoleIds.Cashier, MartId = null, Name = "Cashier", IsSystemDefault = true, CreatedAtUtc = seedTimestamp }
+        );
     }
 }

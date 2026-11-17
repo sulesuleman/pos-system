@@ -1,4 +1,5 @@
 using backend.Api.Infrastructure.Persistence;
+using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy;
 using backend.Api.Modules.Tenancy.Domain;
@@ -15,8 +16,8 @@ public class TenantIsolationTests : IAsyncLifetime
 
     private Guid _martAId;
     private Guid _martBId;
-    private Guid _ownerAId;
-    private Guid _ownerBId;
+    private Guid _userAId;
+    private Guid _userBId;
 
     public TenantIsolationTests()
     {
@@ -39,7 +40,7 @@ public class TenantIsolationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // tenantContext: null bypasses the Owner query filter (same as Super Admin) so seeding can see
+        // tenantContext: null bypasses the User query filter (same as Super Admin) so seeding can see
         // across both Marts; the filter only ever restricts queries, never Add/SaveChanges.
         await using var context = new AppDbContext(_options, tenantContext: null);
         await context.Database.MigrateAsync();
@@ -48,16 +49,16 @@ public class TenantIsolationTests : IAsyncLifetime
         var martB = new Mart { Id = Guid.NewGuid(), Name = $"Mart B {Guid.NewGuid():N}", Code = "BBBBBB" };
         context.Marts.AddRange(martA, martB);
 
-        var ownerA = NewOwner(martA.Id, staffId: 1);
-        var ownerB = NewOwner(martB.Id, staffId: 1);
-        context.Owners.AddRange(ownerA, ownerB);
+        var userA = NewOwner(martA.Id, staffId: 1);
+        var userB = NewOwner(martB.Id, staffId: 1);
+        context.Users.AddRange(userA, userB);
 
         await context.SaveChangesAsync();
 
         _martAId = martA.Id;
         _martBId = martB.Id;
-        _ownerAId = ownerA.Id;
-        _ownerBId = ownerB.Id;
+        _userAId = userA.Id;
+        _userBId = userB.Id;
     }
 
     public async Task DisposeAsync()
@@ -67,53 +68,54 @@ public class TenantIsolationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Owners_ScopedToMartA_OnlyReturnsMartAOwner()
+    public async Task Users_ScopedToMartA_OnlyReturnsMartAUser()
     {
         await using var context = new AppDbContext(_options, new FakeTenantContext(_martAId));
 
-        var owners = await context.Owners.ToListAsync();
+        var users = await context.Users.ToListAsync();
 
-        var owner = Assert.Single(owners);
-        Assert.Equal(_ownerAId, owner.Id);
+        var user = Assert.Single(users);
+        Assert.Equal(_userAId, user.Id);
     }
 
     [Fact]
-    public async Task Owners_ScopedToMartB_OnlyReturnsMartBOwner()
+    public async Task Users_ScopedToMartB_OnlyReturnsMartBUser()
     {
         await using var context = new AppDbContext(_options, new FakeTenantContext(_martBId));
 
-        var owners = await context.Owners.ToListAsync();
+        var users = await context.Users.ToListAsync();
 
-        var owner = Assert.Single(owners);
-        Assert.Equal(_ownerBId, owner.Id);
+        var user = Assert.Single(users);
+        Assert.Equal(_userBId, user.Id);
     }
 
     [Fact]
-    public async Task Owners_ScopedToMartA_CannotReadMartBOwnerById()
+    public async Task Users_ScopedToMartA_CannotReadMartBUserById()
     {
         await using var context = new AppDbContext(_options, new FakeTenantContext(_martAId));
 
-        var owner = await context.Owners.SingleOrDefaultAsync(o => o.Id == _ownerBId);
+        var user = await context.Users.SingleOrDefaultAsync(u => u.Id == _userBId);
 
-        Assert.Null(owner);
+        Assert.Null(user);
     }
 
     [Fact]
-    public async Task Owners_WithNoTenantContext_ReturnsNoRows()
+    public async Task Users_WithNoTenantContext_ReturnsNoRows()
     {
         // No MartId at all (e.g. an unauthenticated request) must fail closed, not open.
         await using var context = new AppDbContext(_options, tenantContext: null);
 
-        var owners = await context.Owners.ToListAsync();
+        var users = await context.Users.ToListAsync();
 
-        Assert.Empty(owners);
+        Assert.Empty(users);
     }
 
-    private static Owner NewOwner(Guid martId, int staffId) => new()
+    private static User NewOwner(Guid martId, int staffId) => new()
     {
         Id = Guid.NewGuid(),
         MartId = martId,
         StaffId = staffId,
+        RoleId = RoleIds.Owner,
         FirstName = "Test",
         LastName = "Owner",
         Email = $"owner-{Guid.NewGuid():N}@example.com",
