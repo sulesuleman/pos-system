@@ -593,6 +593,7 @@ All four primary metrics have equal priority for v1; none is traded for another.
 6. Is hard-drive corruption really the main pain, and are loose or weighed items truly never sold? Both are unconfirmed.
 7. Will later Marts need their own tax, currency or language? Out of v1, but it affects how settings are modeled.
 8. When does billing enter scope, and does it need plan limits (Branches, Counters, users)?
+9. How does an Owner or Manager recover if they lose/forget their Mart code (FR-25)? It is a one-time reveal from Super Admin at Mart creation, never shown again, and is itself part of the login identifier (Mart code + email + password) - distinct from FR-22's device-recovery code, which solves a different problem (every Registered Device lost). Not yet designed: whether Super Admin looks it up for them on request (the Marts list already shows it), some other self-service lookup, or something else - and how that recovery path itself gets authenticated so it can't be used to guess/confirm a Mart code. Raised 2026-11-17 during Story 1.4's build.
 
 Questions 1 to 6 need facts from the pilot Mart. Former questions on Owner recovery, number of Owners, code formats and uploads from revoked devices were decided on 2026-10-12 (FR-22, §7.2, FR-27, FR-16).
 
