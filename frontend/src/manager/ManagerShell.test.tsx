@@ -4,13 +4,22 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppThemeProvider } from '../shared/theme'
 import { ManagerShell } from './ManagerShell'
 import * as superAdminAuth from '../shared/api/superAdminAuth'
+import { SUPER_ADMIN_NAV_ITEMS } from './layout/navConfig'
 
 function renderShell() {
   return render(
     <AppThemeProvider>
       <MemoryRouter initialEntries={['/']}>
         <Routes>
-          <Route element={<ManagerShell />}>
+          <Route
+            element={
+              <ManagerShell
+                navItems={SUPER_ADMIN_NAV_ITEMS}
+                onSignOut={superAdminAuth.signOut}
+                signOutRedirectPath="/super-admin/sign-in"
+              />
+            }
+          >
             <Route path="/" element={<div>child content</div>} />
           </Route>
           <Route path="/super-admin/sign-in" element={<div>sign-in page</div>} />

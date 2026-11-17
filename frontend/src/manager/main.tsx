@@ -2,30 +2,61 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppThemeProvider } from '../shared/theme'
+import { signOut as signOutSuperAdmin } from '../shared/api/superAdminAuth'
+import { signOut as signOutOwner } from '../shared/api/ownerAuth'
 import { ManagerShell } from './ManagerShell'
 import { SignInPage } from './features/auth/SignInPage'
+import { OwnerActivatePage } from './features/auth/OwnerActivatePage'
+import { OwnerSignInPage } from './features/auth/OwnerSignInPage'
 import { SuperAdminArea } from './features/super-admin/SuperAdminArea'
+import { OwnerArea } from './features/owner/OwnerArea'
 import { RequireSession } from './features/auth/RequireSession'
+import { RequireOwnerSession } from './features/auth/RequireOwnerSession'
+import { SUPER_ADMIN_NAV_ITEMS, OWNER_NAV_ITEMS } from './layout/navConfig'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppThemeProvider>
       <BrowserRouter>
         <Routes>
-          {/* Temporary, reversible default: Story 1.4 (Owner login) will replace this
-              redirect with a real chooser/landing. */}
+          {/* Still temporary: Owner sign-in now exists at /owners/sign-in, but there's no
+              chooser between it and Super Admin sign-in yet - a later story adds one. */}
           <Route path="/" element={<Navigate to="/super-admin/sign-in" replace />} />
-          {/* The sign-in screen owns its own full-bleed layout (hero panel + theme toggle) and
-              is shown before anyone is authenticated, so it is never wrapped in ManagerShell's
-              "Manager" app bar — that bar belongs to the authenticated area only. */}
+          {/* Sign-in/activation screens own their own full-bleed layout (hero panel + theme
+              toggle) and are shown before anyone is authenticated, so they're never wrapped in
+              ManagerShell's app bar — that bar belongs to the authenticated areas only. */}
           <Route path="/super-admin/sign-in" element={<SignInPage />} />
-          <Route element={<ManagerShell />}>
+          <Route path="/owners/activate" element={<OwnerActivatePage />} />
+          <Route path="/owners/sign-in" element={<OwnerSignInPage />} />
+          <Route
+            element={
+              <ManagerShell
+                navItems={SUPER_ADMIN_NAV_ITEMS}
+                onSignOut={signOutSuperAdmin}
+                signOutRedirectPath="/super-admin/sign-in"
+              />
+            }
+          >
             <Route
               path="/super-admin"
               element={
                 <RequireSession>
                   <SuperAdminArea />
                 </RequireSession>
+              }
+            />
+          </Route>
+          <Route
+            element={
+              <ManagerShell navItems={OWNER_NAV_ITEMS} onSignOut={signOutOwner} signOutRedirectPath="/owners/sign-in" />
+            }
+          >
+            <Route
+              path="/owner"
+              element={
+                <RequireOwnerSession>
+                  <OwnerArea />
+                </RequireOwnerSession>
               }
             />
           </Route>
