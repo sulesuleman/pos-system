@@ -78,7 +78,8 @@ graph LR
 - **Prevents:** cross-Mart identity, shared logins and Mart-context confusion.
 - **Rule:**
   - Every account belongs to exactly one Mart. The same person in two Marts has two accounts. There is no global Person, Membership or SSO in v1.
-  - Login is Mart (implicit at a registered Counter, otherwise a Mart code) + Staff ID (unique within the Mart) + the account's own PIN or password.
+  - Login is Mart (implicit at a registered Counter, otherwise a Mart code) + Staff ID (unique within the Mart) + the account's own PIN or password - for Counter-role staff.
+  - The Owner, and later a Manager, instead log in with Mart code + email + password (unique as the Mart-code/email pair, not email alone - the same email can be the Owner of one Mart and staff of another). Password: at least 8 characters, a number, a special character, an uppercase and a lowercase letter. Decided by the product owner on 2026-11-17.
   - The Owner creates staff; the system generates the Staff ID and a one-time activation code. Staff set their own PIN at first login, so nobody else knows it.
   - Resets issue a new activation code and kill the old PIN. They are audited. The Owner may reset anyone; others only lower roles.
 
@@ -91,6 +92,7 @@ graph LR
   - Roles are custom per Mart, built from a fixed Permission list. Cashier and Manager are starter Roles. The Owner is not an editable Role: it holds every Permission in every Branch.
   - Roles are assigned per Branch. A Permission acts on Mart-wide data (Products, Mart price, suppliers, Roles, Audit Log) only if the user holds it in every active Branch (decided 2026-10-13).
   - Every write request, and any session with a selling Permission, requires a Registered Device of that Branch. The Owner's home PC and phone are read-only dashboards and can never be registered for editing.
+  - A Manager's session requires a Registered Device for any access at all, not only writes - stricter than the Owner, who still gets the read-only dashboard from an unregistered device. Decided by the product owner on 2026-11-17.
   - Device registration is an admin action tied to on-site machines. The Owner can revoke a lost device.
 
 ### AD-6 — Stock is the sum of additive Stock Events; Counters never receive quantities [ADOPTED]

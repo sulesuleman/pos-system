@@ -41,7 +41,7 @@ namespace backend.Api.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
@@ -76,6 +76,9 @@ namespace backend.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("MartId", "Email")
+                        .IsUnique();
+
                     b.HasIndex("MartId", "StaffId")
                         .IsUnique();
 
@@ -93,6 +96,9 @@ namespace backend.Api.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("AttemptedEmail")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AttemptedMartCode")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("IpAddress")

@@ -156,7 +156,8 @@ Staff activate their own account, log in with their own PIN or password, and can
 **Consequences (testable):**
 - Creating a staff account generates a Staff ID and shows a one-time activation code to the Owner. Names and phone numbers need not be unique.
 - The staff member enters the activation code at first login and sets their own PIN or password. The code then stops working. No one else ever sees the PIN or password.
-- A user logs in with Mart, Staff ID and PIN or password. A Counter is registered to a Branch, so it already knows the Mart and asks only for Staff ID and PIN. On a phone the user also enters the Mart code.
+- This Mart/Staff ID/PIN login is for Counter-role staff (for example Cashier) - the Owner and Manager instead sign in with Mart code, email and password (FR-25). Decided by the product owner on 2026-11-17.
+- A Counter-role user logs in with Mart, Staff ID and PIN or password. A Counter is registered to a Branch, so it already knows the Mart and asks only for Staff ID and PIN. On a phone the user also enters the Mart code.
 - Formats, chosen to be easy to type at a Counter: the Mart code is 6 characters of letters and digits with look-alikes left out (no 0, O, 1 or I); the Staff ID is a number (for example 1001), unique within the Mart; the activation code is 8 digits, works once and expires after 7 days; a PIN is at least 6 digits. Decided by the product owner on 2026-10-12.
 - A staff member who forgets their PIN asks the Owner or a user with the reset PINs Permission. That person generates a new activation code, and the old PIN stops working at once. The staff member then sets a new PIN.
 - The Owner can reset anyone. A user with the reset PINs Permission can reset only users with a lower Role, never an equal or higher one. A Role is lower when its Permissions in that Branch are a strict subset of the resetter's. Nobody can reset the Owner (Owner recovery is in FR-22). With the starter Roles, a Manager can reset Cashiers but not another Manager.
@@ -489,6 +490,8 @@ A Super Admin can create a Mart with its Owner, send the Owner a one-time setup 
 **Consequences (testable):**
 - A Mart's name, Owner name and Owner contact are required to create it.
 - The Owner sets a password with the setup code, which works once and expires.
+- The Owner, and later a Manager (Epic 2), sign in with the Mart code, their email and that password - not a Staff ID/PIN (contrast FR-27, which is Counter-role staff only). Because the same email can belong to more than one Mart, or to both an Owner and a separate staff account, the Mart code and email together identify the account - the email alone is not unique. The password is at least 8 characters, with a number, a special character, an uppercase and a lowercase letter. Decided by the product owner on 2026-11-17.
+- Signing in with Mart code + email + password does not by itself grant write access from any device: AD-5's existing rule still applies unchanged - the Owner's session is full read/write only from a Registered Device of a Branch, and read-only (Dashboard/Exceptions Report, §4.9) from anywhere else, home and phone included. A Manager's session requires a Registered Device for any access at all, not only for writes - stricter than the Owner, who at least gets the read-only dashboard from an unregistered device. Decided by the product owner on 2026-11-17.
 - Suspending a Mart (for example when its subscription ends) blocks all its logins on next contact with the server. Offline Counters keep selling until their next Sync, but never longer than the offline limit in FR-15. Then they lock.
 - When an online Counter of a suspended Mart contacts the server, it first uploads its unsynced Sales, Returns and Shift data, and the server accepts them. Then the Counter locks. Decided by the product owner on 2026-10-13.
 - A locked Counter of a suspended Mart keeps any data it could not upload stored on the Counter. Nothing is deleted.
@@ -624,6 +627,8 @@ Every inline `[ASSUMPTION]` tag, by location.
 - **Not done:** a comparison with existing cloud POS products. For a SaaS offering this matters more than for an internal tool, and should be done before the first sale to a second Mart.
 
 ## 12. Changelog
+
+**2026-11-17:** Owner and Manager sign in with Mart code + email + password, not Staff ID/PIN; the Mart code and email together identify the account (the email alone is not unique, since the same person/email can be an Owner of one Mart and staff of another). Password: at least 8 characters, a number, a special character, an uppercase and a lowercase letter. This is a credential-format change only - AD-5's device/read-only rule is unchanged: the Owner still gets only the read-only Dashboard (§4.9) from an unregistered device (home/phone), full access only from a Registered Device; a Manager needs a Registered Device for any access, not only writes. Counter-role staff (Cashier etc.) are unaffected, still Staff ID + PIN. Written into PRD FR-25, FR-27; spine AD-4, AD-5.
 
 **Revision note (2026-10-06):** scope changed from a single-Mart internal tool to a multi-tenant SaaS (Super Admin, Marts, Branches, custom Roles), and Returns now need Approver acceptance. This revision has not yet been through a second reviewer pass.
 

@@ -15,5 +15,7 @@ namespace backend.Api.Modules.Identity.Domain
         public string? IpAddress { get; set; }
 
         public string? UserAgent { get; set; }
+
+        public string? AttemptedMartCode { get; set; }
     }
 }

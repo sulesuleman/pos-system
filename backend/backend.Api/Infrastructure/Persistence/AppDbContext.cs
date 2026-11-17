@@ -43,5 +43,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Owner>()
             .HasQueryFilter(o => o.MartId == _currentMartId);
 
+        modelBuilder.Entity<Owner>()
+            .HasIndex(o => new { o.MartId, o.Email })
+            .IsUnique();
+
     }
 }

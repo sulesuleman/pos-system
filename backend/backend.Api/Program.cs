@@ -53,6 +53,7 @@ var v1 = app.MapGroup("/api/v1");
 
 v1.MapGet("/health", () => Results.Ok(new {status = "ok" }));
 v1.MapSuperAdminAuthEndpoints();
+v1.MapOwnerAuthEndpoints();
 v1.MapMartsEndpoints();
 
 // Configure the HTTP request pipeline.
