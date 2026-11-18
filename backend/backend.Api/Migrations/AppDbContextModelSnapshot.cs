@@ -22,6 +22,59 @@ namespace backend.Api.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("backend.Api.Modules.AuditLog.Domain.AuditLogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid?>("EntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("EntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("MartId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NewValuesJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("OldValuesJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserAgent")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MartId", "EntityType");
+
+                    b.HasIndex("MartId", "OccurredAtUtc");
+
+                    b.HasIndex("MartId", "UserId");
+
+                    b.ToTable("AuditLogEntries");
+                });
+
             modelBuilder.Entity("backend.Api.Modules.Identity.Domain.PlatformAuditLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -251,6 +304,21 @@ namespace backend.Api.Migrations
                         .IsUnique();
 
                     b.ToTable("Marts");
+                });
+
+            modelBuilder.Entity("backend.Api.Modules.AuditLog.Domain.AuditLogEntry", b =>
+                {
+                    b.HasOne("backend.Api.Modules.Tenancy.Domain.Mart", null)
+                        .WithMany()
+                        .HasForeignKey("MartId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("backend.Api.Modules.Identity.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("backend.Api.Modules.Identity.Domain.User", b =>

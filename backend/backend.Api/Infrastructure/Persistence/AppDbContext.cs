@@ -1,3 +1,4 @@
+using backend.Api.Modules.AuditLog.Domain;
 using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy;
@@ -27,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<PlatformAuditLogEntry> PlatformAuditLogEntries => Set<PlatformAuditLogEntry>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,6 +77,26 @@ public class AppDbContext : DbContext
             .HasIndex(r => new { r.MartId, r.Name })
             .IsUnique()
             .HasFilter("[MartId] IS NOT NULL");
+
+        modelBuilder.Entity<AuditLogEntry>(e =>
+        {
+            e.HasQueryFilter(a => a.MartId == _currentMartId);
+            e.HasIndex(a => new { a.MartId, a.OccurredAtUtc });
+            e.HasIndex(a => new { a.MartId, a.UserId });
+            e.HasIndex(a => new { a.MartId, a.EntityType });
+            e.Property(a => a.EntityType).HasMaxLength(100);
+            e.Property(a => a.Action).HasMaxLength(50);
+
+            e.HasOne<Mart>()
+                .WithMany()
+                .HasForeignKey(a => a.MartId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            e.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(a => a.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
         var seedTimestamp = new DateTime(2026, 11, 17, 0, 0, 0, DateTimeKind.Utc);
         modelBuilder.Entity<Role>().HasData(

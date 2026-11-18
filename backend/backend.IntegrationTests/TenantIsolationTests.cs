@@ -1,4 +1,5 @@
 using backend.Api.Infrastructure.Persistence;
+using backend.Api.Modules.AuditLog.Domain;
 using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy;
@@ -18,6 +19,8 @@ public class TenantIsolationTests : IAsyncLifetime
     private Guid _martBId;
     private Guid _userAId;
     private Guid _userBId;
+    private Guid _auditEntryAId;
+    private Guid _auditEntryBId;
 
     public TenantIsolationTests()
     {
@@ -53,12 +56,18 @@ public class TenantIsolationTests : IAsyncLifetime
         var userB = NewOwner(martB.Id, staffId: 1);
         context.Users.AddRange(userA, userB);
 
+        var auditEntryA = NewAuditEntry(martA.Id, userA.Id);
+        var auditEntryB = NewAuditEntry(martB.Id, userB.Id);
+        context.AuditLogEntries.AddRange(auditEntryA, auditEntryB);
+
         await context.SaveChangesAsync();
 
         _martAId = martA.Id;
         _martBId = martB.Id;
         _userAId = userA.Id;
         _userBId = userB.Id;
+        _auditEntryAId = auditEntryA.Id;
+        _auditEntryBId = auditEntryB.Id;
     }
 
     public async Task DisposeAsync()
@@ -109,6 +118,47 @@ public class TenantIsolationTests : IAsyncLifetime
 
         Assert.Empty(users);
     }
+
+    [Fact]
+    public async Task AuditLogEntries_ScopedToMartA_OnlyReturnsMartAEntry()
+    {
+        await using var context = new AppDbContext(_options, new FakeTenantContext(_martAId));
+
+        var entries = await context.AuditLogEntries.ToListAsync();
+
+        var entry = Assert.Single(entries);
+        Assert.Equal(_auditEntryAId, entry.Id);
+    }
+
+    [Fact]
+    public async Task AuditLogEntries_ScopedToMartA_CannotReadMartBEntryById()
+    {
+        await using var context = new AppDbContext(_options, new FakeTenantContext(_martAId));
+
+        var entry = await context.AuditLogEntries.SingleOrDefaultAsync(e => e.Id == _auditEntryBId);
+
+        Assert.Null(entry);
+    }
+
+    [Fact]
+    public async Task AuditLogEntries_WithNoTenantContext_ReturnsNoRows()
+    {
+        await using var context = new AppDbContext(_options, tenantContext: null);
+
+        var entries = await context.AuditLogEntries.ToListAsync();
+
+        Assert.Empty(entries);
+    }
+
+    private static AuditLogEntry NewAuditEntry(Guid martId, Guid userId) => new()
+    {
+        Id = Guid.NewGuid(),
+        MartId = martId,
+        UserId = userId,
+        EntityType = "Branch",
+        Action = "Created",
+        OccurredAtUtc = DateTime.UtcNow,
+    };
 
     private static User NewOwner(Guid martId, int staffId) => new()
     {

@@ -479,6 +479,28 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CreateStaff_WritesAnAuditLogEntry()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, martId) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
+        var (managerId, _, _) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var entry = await db.AuditLogEntries
+            .IgnoreQueryFilters()
+            .SingleAsync(e => e.MartId == martId && e.EntityType == "User" && e.EntityId == managerId);
+        Assert.Equal("Created", entry.Action);
+    }
+
+    [Fact]
     public async Task CreateStaff_WithoutOwnerSession_ReturnsUnauthorized()
     {
         using var client = _factory.CreateClient();
@@ -517,6 +539,31 @@ public class AuthEndpointTests : IAsyncLifetime
             new { firstName = "Another", lastName = "Manager", email = $"m2-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1" });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    // Regression test for a real cross-Mart leak found 2026-11-18: GetStaff's Join used to call
+    // IgnoreQueryFilters() on the Roles side, which disabled EF Core's tenant filter for the
+    // whole composed query (including Users), so every Owner saw every Mart's staff. See the
+    // fix's comment in StaffEndpoints.GetStaff.
+    [Fact]
+    public async Task GetStaff_IsolatedBetweenMarts_OnlyReturnsOwnMartsOwner()
+    {
+        var ownerEmailA = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCodeA, setupCodeA, _) = await CreateMartAndOwnerAsync(ownerEmailA);
+        await ActivateAsync(martCodeA, ownerEmailA, setupCodeA);
+        using var clientA = _factory.CreateClient();
+        await clientA.PostAsJsonAsync("/api/v1/auth/sign-in", new { martCode = martCodeA, email = ownerEmailA, password = OwnerPassword });
+
+        var ownerEmailB = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCodeB, setupCodeB, _) = await CreateMartAndOwnerAsync(ownerEmailB);
+        await ActivateAsync(martCodeB, ownerEmailB, setupCodeB);
+        using var clientB = _factory.CreateClient();
+        await clientB.PostAsJsonAsync("/api/v1/auth/sign-in", new { martCode = martCodeB, email = ownerEmailB, password = OwnerPassword });
+
+        var response = await clientA.GetAsync("/api/v1/staff");
+        var staff = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var owner = Assert.Single(staff.EnumerateArray());
+        Assert.Equal(ownerEmailA, owner.GetProperty("email").GetString());
     }
 
     [Fact]

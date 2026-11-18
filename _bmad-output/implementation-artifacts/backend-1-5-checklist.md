@@ -45,13 +45,17 @@ C#-side: `AuditLogEntry.cs`; `AppDbContext`: `DbSet<AuditLogEntry>`, query filte
 
 ## Tasks
 
-- [ ] Migration: `AddAuditLogEntries`.
-- [ ] Apply against the local `PosSystem` database.
-- [ ] `AuditLogEntry.cs`; `AppDbContext` wiring.
-- [ ] `AuditLogger` helper (or equivalent) for "add an entry to this DbContext before you save" call sites.
-- [ ] `AuditLogEndpoints.cs`: `GET /audit-log` with the filters above.
-- [ ] Tests: an entry's `MartId`/`UserId`/`EntityType`/`Action` round-trip correctly; the two-Mart isolation test covers `AuditLogEntries`; no PUT/DELETE route exists for this table (a negative test, same as the Super Admin's "no create path" test in Story 1.2).
-- [ ] Once this lands, go back and wire `AuditLogger` calls into Story 1.6's Branch/Mart-settings endpoints (and anywhere else already shipped that FR-20 says should be audited but isn't yet — check `CreateMart`/`CreateStaff` too, since those predate this table).
+- [x] Migration: `AddAuditLogEntries`.
+- [x] Apply against the local `PosSystem` database.
+- [x] `AuditLogEntry.cs`; `AppDbContext` wiring.
+- [x] `AuditLogger` helper (or equivalent) for "add an entry to this DbContext before you save" call sites.
+- [x] `AuditLogEndpoints.cs`: `GET /audit-log` with the filters above.
+- [x] Tests: an entry's `MartId`/`UserId`/`EntityType`/`Action` round-trip correctly; the two-Mart isolation test covers `AuditLogEntries`; no PUT/DELETE route exists for this table (a negative test, same as the Super Admin's "no create path" test in Story 1.2).
+- [x] Once this lands, go back and wire `AuditLogger` calls into Story 1.6's Branch/Mart-settings endpoints (and anywhere else already shipped that FR-20 says should be audited but isn't yet — check `CreateMart`/`CreateStaff` too, since those predate this table). `CreateMart`'s actor is a Super Admin (already covered by `PlatformAuditLogEntry`, not this table); `CreateStaff` now calls `AuditLogger.Record`. Story 1.6's own endpoints don't exist yet — nothing to wire there until that backend checklist is built.
+
+## Incidental finding (fixed 2026-11-18)
+
+While building this, found and fixed a **real cross-Mart data leak** in the already-shipped `StaffEndpoints.GetStaff`: its `Join` called `.IgnoreQueryFilters()` on the `Roles` side (to let system Roles with `MartId == null` through — unnecessary, since Role's own filter `r.MartId == null || r.MartId == _currentMartId` already allows that). In this EF Core version, calling `IgnoreQueryFilters()` on one side of a `Join` disables the tenant filter for the **entire composed query**, so every signed-in Owner's `GET /staff` was returning every Mart's Owners/staff, not just their own — a genuine AD-2 violation. Fixed by dropping the unneeded call; added a permanent regression test (`GetStaff_IsolatedBetweenMarts_OnlyReturnsOwnMartsOwner`). `AuditLogEndpoints.GetAuditLog` was written from scratch without ever using `IgnoreQueryFilters()` on its `Users` join, so it was never affected — but watch for this pattern (`IgnoreQueryFilters()` + `Join`) anywhere else in the codebase going forward.
 
 ## Notes
 

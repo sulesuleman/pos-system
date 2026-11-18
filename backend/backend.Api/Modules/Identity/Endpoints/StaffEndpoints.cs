@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using backend.Api.Infrastructure.Persistence;
+using backend.Api.Modules.AuditLog;
 using backend.Api.Modules.Identity.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -70,6 +71,18 @@ public static class StaffEndpoints
             CreatedAtUtc = DateTime.UtcNow,
         };
         db.Users.Add(manager);
+
+        AuditLogger.Record(
+            db,
+            martId,
+            currentUserId.Value,
+            entityType: "User",
+            entityId: manager.Id,
+            action: "Created",
+            oldValues: null,
+            newValues: new { manager.FirstName, manager.LastName, manager.Email, Role = "Manager" },
+            httpContext);
+
         await db.SaveChangesAsync();
 
         return Results.Json(
@@ -90,8 +103,12 @@ public static class StaffEndpoints
             return Results.Unauthorized();
         }
 
+        // No IgnoreQueryFilters() on the Roles side: Role's own filter already allows MartId ==
+        // null (system Roles), so it was never needed - and calling it here disabled EF Core's
+        // tenant filter for the WHOLE composed query, including the Users side, leaking every
+        // Mart's staff to every Owner. Found and fixed 2026-11-18 while building Story 1.5.
         var staff = await db.Users
-            .Join(db.Roles.IgnoreQueryFilters(), u => u.RoleId, r => r.Id, (u, r) => new { u, r.Name })
+            .Join(db.Roles, u => u.RoleId, r => r.Id, (u, r) => new { u, r.Name })
             .Select(x => new
             {
                 id = x.u.Id,

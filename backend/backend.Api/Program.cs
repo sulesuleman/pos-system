@@ -1,4 +1,5 @@
 using backend.Api.Infrastructure.Persistence;
+using backend.Api.Modules.AuditLog.Endpoints;
 using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Endpoints;
 using backend.Api.Modules.Tenancy;
@@ -56,6 +57,7 @@ v1.MapSuperAdminAuthEndpoints();
 v1.MapAuthEndpoints();
 v1.MapStaffEndpoints();
 v1.MapMartsEndpoints();
+v1.MapAuditLogEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
