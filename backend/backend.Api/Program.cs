@@ -58,6 +58,8 @@ v1.MapAuthEndpoints();
 v1.MapStaffEndpoints();
 v1.MapMartsEndpoints();
 v1.MapAuditLogEndpoints();
+v1.MapBranchesEndpoints();
+v1.MapMartSettingsEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

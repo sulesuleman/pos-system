@@ -50,13 +50,17 @@ C#-side: extend `Mart.cs` with the 3 new properties; extend `Branch.cs` with `Cu
 
 ## Tasks
 
-- [ ] Confirm with AD-16's checklist which migration order you're using (separate or merged) before starting.
-- [ ] Migration: `AddMartSettingsAndBranchCutover` (or folded into AD-16's Branches migration).
-- [ ] Apply against the local `PosSystem` database.
-- [ ] `Mart.cs`/`Branch.cs` property additions; `AppDbContext` wiring.
-- [ ] `BranchesEndpoints.cs`: create/list/edit/deactivate, with the Owner-only vs. `manage Branches and devices`-and-own-Branch-only split.
-- [ ] `MartSettingsEndpoints.cs`: get/update.
-- [ ] Tests: Owner can create/edit/deactivate; a Manager with `manage Branches and devices` can edit their own Branch's settings but not create/deactivate, and cannot edit another Branch's settings; a user without the Permission is refused; `TenantIsolationTests` extended for `Branches`.
+- [x] Confirm with AD-16's checklist which migration order you're using (separate or merged) before starting. AD-16 landed first, already applied separately; this story's migration followed as its own, kept separate per the checklist's default.
+- [x] Migration: `AddMartSettingsAndBranchCutover` (or folded into AD-16's Branches migration). Kept separate, matches the checklist's schema table exactly.
+- [x] Apply against the local `PosSystem` database.
+- [x] `Mart.cs`/`Branch.cs` property additions; `AppDbContext` wiring (with `HasDefaultValue` for `Currency`/`DefaultTimeZone`/`LongPendingReturnMinutes`/`StockCheckLocalTime` so the migration carries real SQL `DEFAULT` constraints).
+- [x] `BranchesEndpoints.cs`: create/list/edit/deactivate, with the Owner-only vs. `manage Branches and devices`-and-own-Branch-only split. Added a shared `UserAuthorization` helper (`Modules/Identity/UserAuthorization.cs`) for the Owner-bypass + Permission check, and refactored `StaffEndpoints` onto it too to avoid a third copy of the same logic.
+- [x] `MartSettingsEndpoints.cs`: get/update, Owner-only (no Branch-scoped exception - these are Mart-wide).
+- [x] Tests: Owner can create/edit/deactivate; a Manager with `manage Branches and devices` can edit their own Branch's settings but not create/deactivate, and cannot edit another Branch's settings; a user without the Permission is refused (same throwaway-custom-Role technique as AD-16's); `TenantIsolationTests` for `Branches` were already added during AD-16 (not duplicated here). 11 `BranchesEndpointTests` + 5 `MartSettingsEndpointTests` added; full suite (84 tests across both projects) passes.
+
+## Decision: no reactivate endpoint
+
+Asked the user directly (checklist flagged this as open) - confirmed **one-way for now**: only `POST /branches/{id}/deactivate` exists, matching what FR-26/epics.md actually specify. A reactivate endpoint can be added later as its own small story if needed.
 
 ## Sequencing note
 

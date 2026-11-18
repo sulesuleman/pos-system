@@ -161,27 +161,13 @@ public static class StaffEndpoints
     // "manage staff and Roles" via their Role's RolePermissions.
     private static async Task<User?> RequireCreatorWithStaffPermissionAsync(AppDbContext db, HttpContext httpContext)
     {
-        var userIdValue = httpContext.Session.GetString("UserId");
-        if (userIdValue is null)
-        {
-            return null;
-        }
-
-        var userId = Guid.Parse(userIdValue);
-        var user = await db.Users.IgnoreQueryFilters().SingleOrDefaultAsync(u => u.Id == userId);
+        var user = await UserAuthorization.GetSignedInUserAsync(db, httpContext);
         if (user is null)
         {
             return null;
         }
 
-        if (user.RoleId == RoleIds.Owner)
-        {
-            return user;
-        }
-
-        var hasStaffPermission = await db.RolePermissions
-            .AnyAsync(rp => rp.RoleId == user.RoleId && rp.PermissionId == PermissionIds.ManageStaffAndRoles);
-
+        var hasStaffPermission = await UserAuthorization.HasPermissionAsync(db, user, PermissionIds.ManageStaffAndRoles);
         return hasStaffPermission ? user : null;
     }
 

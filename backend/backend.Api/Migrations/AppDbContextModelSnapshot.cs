@@ -454,6 +454,9 @@ namespace backend.Api.Migrations
                     b.Property<Guid?>("CreatedByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateOnly?>("CutoverDate")
+                        .HasColumnType("date");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -467,6 +470,11 @@ namespace backend.Api.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<TimeOnly>("StockCheckLocalTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("time")
+                        .HasDefaultValue(new TimeOnly(3, 0, 0));
 
                     b.Property<string>("TimeZone")
                         .IsRequired()
@@ -493,6 +501,23 @@ namespace backend.Api.Migrations
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("PKR");
+
+                    b.Property<string>("DefaultTimeZone")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("nvarchar(max)")
+                        .HasDefaultValue("Asia/Karachi");
+
+                    b.Property<int>("LongPendingReturnMinutes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(30);
 
                     b.Property<string>("Name")
                         .IsRequired()

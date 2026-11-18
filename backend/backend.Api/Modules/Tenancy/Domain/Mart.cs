@@ -15,6 +15,14 @@ public class Mart
 
     public MartStatus Status { get; set; } = MartStatus.Active;
 
+    public string Currency { get; set; } = "PKR";
+
+    // IANA zone, used for Mart-wide reports (AD-12, NFR-11).
+    public string DefaultTimeZone { get; set; } = "Asia/Karachi";
+
+    // FR-19.
+    public int LongPendingReturnMinutes { get; set; } = 30;
+
     public DateTime CreatedAtUtc { get; set; }
 
     public ICollection<Branch> Branches { get; set; } = new List<Branch>();

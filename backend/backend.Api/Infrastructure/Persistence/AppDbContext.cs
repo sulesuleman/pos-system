@@ -42,6 +42,13 @@ public class AppDbContext : DbContext
             .HasIndex(m => m.Code)
             .IsUnique();
 
+        modelBuilder.Entity<Mart>(m =>
+        {
+            m.Property(x => x.Currency).HasDefaultValue("PKR");
+            m.Property(x => x.DefaultTimeZone).HasDefaultValue("Asia/Karachi");
+            m.Property(x => x.LongPendingReturnMinutes).HasDefaultValue(30);
+        });
+
         modelBuilder.Entity<User>()
             .HasIndex(u => new { u.MartId, u.StaffId })
             .IsUnique();
@@ -93,6 +100,8 @@ public class AppDbContext : DbContext
         {
             // Pre-existing gap, closed alongside AD-16: Branch had no tenant query filter at all.
             b.HasQueryFilter(br => br.MartId == _currentMartId);
+
+            b.Property(br => br.StockCheckLocalTime).HasDefaultValue(new TimeOnly(3, 0));
 
             b.HasOne<User>()
                 .WithMany()
