@@ -10,6 +10,10 @@ public class User
 
     public Guid RoleId { get; set; }
 
+    // Null = Owner/Mart-wide. A User belongs to at most one Branch per Mart - a person in a
+    // second Mart needs a second User row (already possible via the (MartId, Email) index).
+    public Guid? BranchId { get; set; }
+
     public required string FirstName { get; set; }
 
     public required string LastName { get; set; }

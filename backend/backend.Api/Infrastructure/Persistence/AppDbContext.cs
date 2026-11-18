@@ -28,6 +28,8 @@ public class AppDbContext : DbContext
     public DbSet<PlatformAuditLogEntry> PlatformAuditLogEntries => Set<PlatformAuditLogEntry>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -70,6 +72,15 @@ public class AppDbContext : DbContext
             .HasForeignKey(u => u.CreatedByUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.BranchId);
+
+        modelBuilder.Entity<User>()
+            .HasOne<Branch>()
+            .WithMany()
+            .HasForeignKey(u => u.BranchId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Role>()
             .HasQueryFilter(r => r.MartId == null || r.MartId == _currentMartId);
 
@@ -77,6 +88,36 @@ public class AppDbContext : DbContext
             .HasIndex(r => new { r.MartId, r.Name })
             .IsUnique()
             .HasFilter("[MartId] IS NOT NULL");
+
+        modelBuilder.Entity<Branch>(b =>
+        {
+            // Pre-existing gap, closed alongside AD-16: Branch had no tenant query filter at all.
+            b.HasQueryFilter(br => br.MartId == _currentMartId);
+
+            b.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(br => br.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Permission>()
+            .HasIndex(p => p.Name)
+            .IsUnique();
+
+        modelBuilder.Entity<RolePermission>(rp =>
+        {
+            rp.HasKey(x => new { x.RoleId, x.PermissionId });
+
+            rp.HasOne<Role>()
+                .WithMany()
+                .HasForeignKey(x => x.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            rp.HasOne<Permission>()
+                .WithMany()
+                .HasForeignKey(x => x.PermissionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
 
         modelBuilder.Entity<AuditLogEntry>(e =>
         {
@@ -103,6 +144,48 @@ public class AppDbContext : DbContext
             new Role { Id = RoleIds.Owner, MartId = null, Name = "Owner", IsSystemDefault = true, CreatedAtUtc = seedTimestamp },
             new Role { Id = RoleIds.Manager, MartId = null, Name = "Manager", IsSystemDefault = true, CreatedAtUtc = seedTimestamp },
             new Role { Id = RoleIds.Cashier, MartId = null, Name = "Cashier", IsSystemDefault = true, CreatedAtUtc = seedTimestamp }
+        );
+
+        modelBuilder.Entity<Permission>().HasData(
+            new Permission { Id = PermissionIds.Sell, Name = "sell" },
+            new Permission { Id = PermissionIds.RequestReturn, Name = "request Return" },
+            new Permission { Id = PermissionIds.ApproveReturn, Name = "approve Return" },
+            new Permission { Id = PermissionIds.ManageProducts, Name = "manage Products" },
+            new Permission { Id = PermissionIds.ManageDeliveries, Name = "manage Deliveries" },
+            new Permission { Id = PermissionIds.ManageSuppliers, Name = "manage suppliers" },
+            new Permission { Id = PermissionIds.RunSpotCounts, Name = "run Spot Counts" },
+            new Permission { Id = PermissionIds.CloseShifts, Name = "close Shifts" },
+            new Permission { Id = PermissionIds.ViewDashboard, Name = "view dashboard" },
+            new Permission { Id = PermissionIds.ViewExceptionsReport, Name = "view Exceptions Report" },
+            new Permission { Id = PermissionIds.ViewAuditLog, Name = "view Audit Log" },
+            new Permission { Id = PermissionIds.ManageStaffAndRoles, Name = "manage staff and Roles" },
+            new Permission { Id = PermissionIds.ResetPins, Name = "reset PINs" },
+            new Permission { Id = PermissionIds.ManageBranchesAndDevices, Name = "manage Branches and devices" }
+        );
+
+        // Manager: every Permission except "view dashboard" (AD-16). Cashier: sell + request Return.
+        var managerPermissionIds = new[]
+        {
+            PermissionIds.Sell,
+            PermissionIds.RequestReturn,
+            PermissionIds.ApproveReturn,
+            PermissionIds.ManageProducts,
+            PermissionIds.ManageDeliveries,
+            PermissionIds.ManageSuppliers,
+            PermissionIds.RunSpotCounts,
+            PermissionIds.CloseShifts,
+            PermissionIds.ViewExceptionsReport,
+            PermissionIds.ViewAuditLog,
+            PermissionIds.ManageStaffAndRoles,
+            PermissionIds.ResetPins,
+            PermissionIds.ManageBranchesAndDevices,
+        };
+        modelBuilder.Entity<RolePermission>().HasData(
+            managerPermissionIds.Select(permissionId => new RolePermission { RoleId = RoleIds.Manager, PermissionId = permissionId })
+        );
+        modelBuilder.Entity<RolePermission>().HasData(
+            new RolePermission { RoleId = RoleIds.Cashier, PermissionId = PermissionIds.Sell },
+            new RolePermission { RoleId = RoleIds.Cashier, PermissionId = PermissionIds.RequestReturn }
         );
     }
 }

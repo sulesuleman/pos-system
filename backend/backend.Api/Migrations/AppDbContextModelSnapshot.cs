@@ -75,6 +75,96 @@ namespace backend.Api.Migrations
                     b.ToTable("AuditLogEntries");
                 });
 
+            modelBuilder.Entity("backend.Api.Modules.Identity.Domain.Permission", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Permissions");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000101"),
+                            Name = "sell"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000102"),
+                            Name = "request Return"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000103"),
+                            Name = "approve Return"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000104"),
+                            Name = "manage Products"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000105"),
+                            Name = "manage Deliveries"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000106"),
+                            Name = "manage suppliers"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000107"),
+                            Name = "run Spot Counts"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000108"),
+                            Name = "close Shifts"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000109"),
+                            Name = "view dashboard"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000110"),
+                            Name = "view Exceptions Report"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000111"),
+                            Name = "view Audit Log"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000112"),
+                            Name = "manage staff and Roles"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000113"),
+                            Name = "reset PINs"
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-0000-0000-000000000114"),
+                            Name = "manage Branches and devices"
+                        });
+                });
+
             modelBuilder.Entity("backend.Api.Modules.Identity.Domain.PlatformAuditLogEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -159,6 +249,98 @@ namespace backend.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("backend.Api.Modules.Identity.Domain.RolePermission", b =>
+                {
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PermissionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("RoleId", "PermissionId");
+
+                    b.HasIndex("PermissionId");
+
+                    b.ToTable("RolePermissions");
+
+                    b.HasData(
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000101")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000102")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000103")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000104")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000105")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000106")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000107")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000108")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000110")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000111")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000112")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000113")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000002"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000114")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000101")
+                        },
+                        new
+                        {
+                            RoleId = new Guid("00000000-0000-0000-0000-000000000003"),
+                            PermissionId = new Guid("00000000-0000-0000-0000-000000000102")
+                        });
+                });
+
             modelBuilder.Entity("backend.Api.Modules.Identity.Domain.SuperAdmin", b =>
                 {
                     b.Property<Guid>("Id")
@@ -188,6 +370,9 @@ namespace backend.Api.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BranchId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Cnic")
@@ -241,6 +426,8 @@ namespace backend.Api.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BranchId");
+
                     b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("RoleId");
@@ -264,6 +451,16 @@ namespace backend.Api.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Location")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("MartId")
                         .HasColumnType("uniqueidentifier");
 
@@ -271,7 +468,13 @@ namespace backend.Api.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("TimeZone")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("MartId");
 
@@ -321,8 +524,28 @@ namespace backend.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("backend.Api.Modules.Identity.Domain.RolePermission", b =>
+                {
+                    b.HasOne("backend.Api.Modules.Identity.Domain.Permission", null)
+                        .WithMany()
+                        .HasForeignKey("PermissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("backend.Api.Modules.Identity.Domain.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("backend.Api.Modules.Identity.Domain.User", b =>
                 {
+                    b.HasOne("backend.Api.Modules.Tenancy.Domain.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("backend.Api.Modules.Identity.Domain.User", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
@@ -337,6 +560,11 @@ namespace backend.Api.Migrations
 
             modelBuilder.Entity("backend.Api.Modules.Tenancy.Domain.Branch", b =>
                 {
+                    b.HasOne("backend.Api.Modules.Identity.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("backend.Api.Modules.Tenancy.Domain.Mart", "Mart")
                         .WithMany("Branches")
                         .HasForeignKey("MartId")

@@ -436,9 +436,11 @@ public class AuthEndpointTests : IAsyncLifetime
 
     private async Task<(Guid UserId, string StaffId, string SetupCode)> CreateManagerAsync(string ownerClient_MartCode, string ownerEmail, HttpClient ownerClient, string managerEmail)
     {
+        var branchId = await CreateBranchForOwnerAsync(ownerEmail);
+
         var response = await ownerClient.PostAsJsonAsync(
             "/api/v1/staff",
-            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1" });
+            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1", branchId });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -446,6 +448,30 @@ public class AuthEndpointTests : IAsyncLifetime
             Guid.Parse(body.GetProperty("userId").GetString()!),
             body.GetProperty("staffId").GetString()!,
             body.GetProperty("setupCode").GetString()!);
+    }
+
+    // No Branch-creation endpoint exists yet (Story 1.6) - seed one directly so CreateStaff has
+    // somewhere to assign the new Manager into, same as this story's Owner-must-choose-a-Branch rule.
+    private async Task<Guid> CreateBranchForOwnerAsync(string ownerEmail)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var owner = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Email == ownerEmail);
+
+        var branch = new Branch
+        {
+            Id = Guid.NewGuid(),
+            MartId = owner.MartId,
+            Name = "Main Branch",
+            Location = "Test Location",
+            TimeZone = "Asia/Karachi",
+            IsActive = true,
+            CreatedByUserId = owner.Id,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        db.Branches.Add(branch);
+        await db.SaveChangesAsync();
+        return branch.Id;
     }
 
     [Fact]
@@ -512,8 +538,11 @@ public class AuthEndpointTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    // AD-16: Manager's seeded RolePermissions include "manage staff and Roles" (every Permission
+    // except "view dashboard"), so a Manager can now create staff too, inheriting their own
+    // BranchId - this used to be Owner-only (AD-15 baseline) and is deliberately no longer.
     [Fact]
-    public async Task CreateStaff_SignedInAsManager_ReturnsUnauthorized()
+    public async Task CreateStaff_SignedInAsManager_WithStaffPermission_Succeeds()
     {
         var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
         var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
@@ -524,7 +553,7 @@ public class AuthEndpointTests : IAsyncLifetime
             new { martCode, email = ownerEmail, password = OwnerPassword });
 
         var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
-        var (_, _, managerSetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+        var (managerId, _, managerSetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
         const string managerPassword = "Manager-Pass1!";
         using var managerClient = _factory.CreateClient();
         await managerClient.PostAsJsonAsync(
@@ -538,7 +567,125 @@ public class AuthEndpointTests : IAsyncLifetime
             "/api/v1/staff",
             new { firstName = "Another", lastName = "Manager", email = $"m2-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1" });
 
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var newStaff = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Id == managerId);
+        var secondStaff = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var secondStaffUser = await db.Users.IgnoreQueryFilters()
+            .SingleAsync(u => u.Id == Guid.Parse(secondStaff.GetProperty("userId").GetString()!));
+        Assert.Equal(newStaff.BranchId, secondStaffUser.BranchId);
+    }
+
+    // A custom Role with no RolePermissions row for "manage staff and Roles" must be refused -
+    // the negative side of the AD-16 Permission check (no custom-Role CRUD UI yet, so this seeds
+    // the Role/User directly, same as CreateBranchForOwnerAsync does for Branches).
+    [Fact]
+    public async Task CreateStaff_SignedInAsRoleWithoutStaffPermission_ReturnsUnauthorized()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, martId) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        var branchId = await CreateBranchForOwnerAsync(ownerEmail);
+
+        const string traineePassword = "Trainee-Pass1!";
+        var traineeEmail = $"trainee-{Guid.NewGuid():N}@example.com";
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var traineeRole = new Role { Id = Guid.NewGuid(), MartId = martId, Name = "Trainee", IsSystemDefault = false, CreatedAtUtc = DateTime.UtcNow };
+            db.Roles.Add(traineeRole);
+
+            var trainee = new User
+            {
+                Id = Guid.NewGuid(),
+                MartId = martId,
+                StaffId = 99,
+                RoleId = traineeRole.Id,
+                BranchId = branchId,
+                FirstName = "Trainee",
+                LastName = "Person",
+                Email = traineeEmail,
+                Contact = "03001234567",
+                Cnic = "12345123456711",
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            var hasher = new PasswordHasher<User>();
+            trainee.PasswordHash = hasher.HashPassword(trainee, traineePassword);
+            db.Users.Add(trainee);
+            await db.SaveChangesAsync();
+        }
+
+        using var traineeClient = _factory.CreateClient();
+        var signInResponse = await traineeClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = traineeEmail, password = traineePassword });
+        Assert.Equal(HttpStatusCode.OK, signInResponse.StatusCode);
+
+        var response = await traineeClient.PostAsJsonAsync(
+            "/api/v1/staff",
+            new { firstName = "Blocked", lastName = "Staff", email = $"blocked-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1" });
+
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateStaff_AsOwner_WithoutBranchId_ReturnsBadRequest()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        await CreateBranchForOwnerAsync(ownerEmail);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/staff",
+            new { firstName = "Manager", lastName = "Person", email = $"manager-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(body.GetProperty("errors").TryGetProperty("branchId", out _));
+    }
+
+    [Fact]
+    public async Task CreateStaff_AsOwner_WithInactiveBranchId_ReturnsBadRequest()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, martId) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        Guid inactiveBranchId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var branch = new Branch
+            {
+                Id = Guid.NewGuid(),
+                MartId = martId,
+                Name = "Closed Branch",
+                Location = "Test Location",
+                TimeZone = "Asia/Karachi",
+                IsActive = false,
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            db.Branches.Add(branch);
+            await db.SaveChangesAsync();
+            inactiveBranchId = branch.Id;
+        }
+
+        var response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/staff",
+            new { firstName = "Manager", lastName = "Person", email = $"manager-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1", branchId = inactiveBranchId });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     // Regression test for a real cross-Mart leak found 2026-11-18: GetStaff's Join used to call

@@ -21,6 +21,8 @@ public class TenantIsolationTests : IAsyncLifetime
     private Guid _userBId;
     private Guid _auditEntryAId;
     private Guid _auditEntryBId;
+    private Guid _branchAId;
+    private Guid _branchBId;
 
     public TenantIsolationTests()
     {
@@ -60,6 +62,10 @@ public class TenantIsolationTests : IAsyncLifetime
         var auditEntryB = NewAuditEntry(martB.Id, userB.Id);
         context.AuditLogEntries.AddRange(auditEntryA, auditEntryB);
 
+        var branchA = NewBranch(martA.Id, userA.Id);
+        var branchB = NewBranch(martB.Id, userB.Id);
+        context.Branches.AddRange(branchA, branchB);
+
         await context.SaveChangesAsync();
 
         _martAId = martA.Id;
@@ -68,6 +74,8 @@ public class TenantIsolationTests : IAsyncLifetime
         _userBId = userB.Id;
         _auditEntryAId = auditEntryA.Id;
         _auditEntryBId = auditEntryB.Id;
+        _branchAId = branchA.Id;
+        _branchBId = branchB.Id;
     }
 
     public async Task DisposeAsync()
@@ -149,6 +157,65 @@ public class TenantIsolationTests : IAsyncLifetime
 
         Assert.Empty(entries);
     }
+
+    [Fact]
+    public async Task Branches_ScopedToMartA_OnlyReturnsMartABranch()
+    {
+        await using var context = new AppDbContext(_options, new FakeTenantContext(_martAId));
+
+        var branches = await context.Branches.ToListAsync();
+
+        var branch = Assert.Single(branches);
+        Assert.Equal(_branchAId, branch.Id);
+    }
+
+    [Fact]
+    public async Task Branches_ScopedToMartA_CannotReadMartBBranchById()
+    {
+        await using var context = new AppDbContext(_options, new FakeTenantContext(_martAId));
+
+        var branch = await context.Branches.SingleOrDefaultAsync(b => b.Id == _branchBId);
+
+        Assert.Null(branch);
+    }
+
+    [Fact]
+    public async Task Branches_WithNoTenantContext_ReturnsNoRows()
+    {
+        await using var context = new AppDbContext(_options, tenantContext: null);
+
+        var branches = await context.Branches.ToListAsync();
+
+        Assert.Empty(branches);
+    }
+
+    // Permissions/RolePermissions are deliberately global, fixed data (AD-16) - never
+    // Mart-customized at this level, so there is no tenant filter to verify. This documents that
+    // design choice rather than testing a leak: every Mart sees the same 14 Permissions and the
+    // same built-in Roles' grants, regardless of tenant context.
+    [Fact]
+    public async Task Permissions_AreVisibleRegardlessOfTenantContext()
+    {
+        await using var context = new AppDbContext(_options, new FakeTenantContext(_martAId));
+
+        var permissions = await context.Permissions.ToListAsync();
+        var rolePermissions = await context.RolePermissions.ToListAsync();
+
+        Assert.Equal(14, permissions.Count);
+        Assert.NotEmpty(rolePermissions);
+    }
+
+    private static Branch NewBranch(Guid martId, Guid createdByUserId) => new()
+    {
+        Id = Guid.NewGuid(),
+        MartId = martId,
+        Name = $"Branch {Guid.NewGuid():N}",
+        Location = "Test Location",
+        TimeZone = "Asia/Karachi",
+        IsActive = true,
+        CreatedByUserId = createdByUserId,
+        CreatedAtUtc = DateTime.UtcNow,
+    };
 
     private static AuditLogEntry NewAuditEntry(Guid martId, Guid userId) => new()
     {

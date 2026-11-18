@@ -83,14 +83,18 @@ C#-side: add `Permission.cs`, `PermissionIds.cs`, `RolePermission.cs` (or a `Rol
 
 ## Tasks
 
-- [ ] Migration 1: `Permissions`/`RolePermissions` tables + seed data.
-- [ ] Migration 2: `Branches` columns + `Users.BranchId`.
-- [ ] Apply both against the local `PosSystem` database; confirm the 3 live Owner rows keep `BranchId = null`.
-- [ ] `Permission.cs`, `PermissionIds.cs`, `RolePermission.cs`/config; `AppDbContext` wiring.
-- [ ] Extend `Branch.cs` (`Location`, `TimeZone`, `IsActive`, `CreatedByUserId`); add `User.BranchId`.
-- [ ] Rewrite `StaffEndpoints`'s Owner-only check into a `manage staff and Roles` Permission check (Owner still passes via the identity bypass).
-- [ ] Extend `CreateStaffRequest`/`CreateStaff` for the Branch-assignment rule above; extend `GetStaff`'s response shape.
-- [ ] Tests: a Manager holding `manage staff and Roles` can create staff; one without it cannot; new staff gets the creator's `BranchId` when the creator is Branch-scoped; Owner must supply a valid, active `BranchId` in this Mart or the request is rejected; `TenantIsolationTests` extended to cover `Branches`/`Permissions`/`RolePermissions`.
+- [x] Migration 1: `Permissions`/`RolePermissions` tables + seed data.
+- [x] Migration 2: `Branches` columns + `Users.BranchId`. Combined into one migration (`AddPermissionsRolePermissionsAndBranchDetails`) since both were written into the model before either was generated — `dotnet ef migrations add` diffs against the current model regardless of call order, so a second `add` produced an empty migration; removed both and regenerated as one, per this checklist's own "a reasonable call" allowance.
+- [x] Apply both against the local `PosSystem` database; confirm the 3 live Owner rows keep `BranchId = null`. Only 1 live Owner row existed at apply time (test data churn since this checklist was written); confirmed it kept `BranchId = null`.
+- [x] `Permission.cs`, `PermissionIds.cs`, `RolePermission.cs`/config; `AppDbContext` wiring.
+- [x] Extend `Branch.cs` (`Location`, `TimeZone`, `IsActive`, `CreatedByUserId`); add `User.BranchId`.
+- [x] Rewrite `StaffEndpoints`'s Owner-only check into a `manage staff and Roles` Permission check (Owner still passes via the identity bypass).
+- [x] Extend `CreateStaffRequest`/`CreateStaff` for the Branch-assignment rule above; extend `GetStaff`'s response shape.
+- [x] Tests: a Manager holding `manage staff and Roles` can create staff; one without it cannot (built a throwaway custom Role with no `RolePermissions` row, since there's no custom-Role CRUD UI yet); new staff gets the creator's `BranchId` when the creator is Branch-scoped; Owner must supply a valid, active `BranchId` in this Mart or the request is rejected (both "missing" and "inactive" cases tested); `TenantIsolationTests` extended to cover `Branches` (three tests, mirroring `Users`'/`AuditLogEntries`' pattern) and documents that `Permissions`/`RolePermissions` are deliberately global/unfiltered.
+
+## Incidental finding: `Branches` had no tenant query filter at all
+
+While wiring `Branch`'s `AppDbContext` config for this slice, found that `Branch` had **never** had a `HasQueryFilter` configured — a pre-existing AD-2 gap (though not yet exploitable via any shipped endpoint, since no Branch-reading endpoint existed before this checklist). Added `HasQueryFilter(br => br.MartId == _currentMartId)` alongside the other changes here; covered by the new `Branches_*` `TenantIsolationTests`.
 
 ## Notes
 

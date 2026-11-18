@@ -6,9 +6,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Api.Modules.Identity.Endpoints;
 
-// The Owner's "Staff" screen: create a Manager account and list this Mart's staff. No Branch
-// assignment yet (Branches/Story 1.6 don't exist) and no custom-Role/Permission CRUD (rest of
-// Story 2.1) - this is the minimal slice that unblocks Manager creation/activation/login.
+// The Owner's "Staff" screen: create a Manager account and list this Mart's staff. Creating
+// staff requires the "manage staff and Roles" Permission (Owner always passes via the identity
+// bypass - Owner holds no RolePermissions rows). No custom-Role/Permission CRUD yet (rest of
+// Story 2.1) - this is the AD-16 slice that adds Branch assignment on top of AD-15's baseline.
 public static class StaffEndpoints
 {
     private static readonly Regex EmailPattern = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
@@ -23,14 +24,13 @@ public static class StaffEndpoints
 
     private static async Task<IResult> CreateStaff(CreateStaffRequest request, AppDbContext db, HttpContext httpContext)
     {
-        var currentUserId = await RequireOwnerAsync(db, httpContext);
-        if (currentUserId is null)
+        var currentUser = await RequireCreatorWithStaffPermissionAsync(db, httpContext);
+        if (currentUser is null)
         {
             return Results.Unauthorized();
         }
 
-        var martIdValue = httpContext.Session.GetString("MartId");
-        var martId = Guid.Parse(martIdValue!);
+        var martId = currentUser.MartId;
 
         var errors = Validate(request);
         if (errors.Count > 0)
@@ -51,6 +51,36 @@ public static class StaffEndpoints
             });
         }
 
+        // Branch-scoped creator (has their own BranchId): new staff inherits it, no choice
+        // offered. Owner (BranchId == null): must supply a valid, active BranchId in this Mart -
+        // the global query filter already scopes db.Branches to the current Mart.
+        Guid branchId;
+        if (currentUser.BranchId is not null)
+        {
+            branchId = currentUser.BranchId.Value;
+        }
+        else
+        {
+            if (request.BranchId is null)
+            {
+                return Results.BadRequest(new
+                {
+                    errors = new Dictionary<string, string> { ["branchId"] = "Select a Branch." },
+                });
+            }
+
+            var branch = await db.Branches.SingleOrDefaultAsync(b => b.Id == request.BranchId && b.IsActive);
+            if (branch is null)
+            {
+                return Results.BadRequest(new
+                {
+                    errors = new Dictionary<string, string> { ["branchId"] = "Select a valid, active Branch." },
+                });
+            }
+
+            branchId = branch.Id;
+        }
+
         var staffId = await StaffIdGenerator.GenerateNextAsync(db, martId);
         var setupCode = SetupCodeGenerator.Generate();
 
@@ -60,6 +90,7 @@ public static class StaffEndpoints
             MartId = martId,
             StaffId = staffId,
             RoleId = RoleIds.Manager,
+            BranchId = branchId,
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
             Email = email,
@@ -67,7 +98,7 @@ public static class StaffEndpoints
             Cnic = NormalizeCnic(request.Cnic),
             SetupCodeHash = setupCode.Hash,
             SetupCodeExpiresAtUtc = setupCode.ExpiresAtUtc,
-            CreatedByUserId = currentUserId,
+            CreatedByUserId = currentUser.Id,
             CreatedAtUtc = DateTime.UtcNow,
         };
         db.Users.Add(manager);
@@ -75,12 +106,12 @@ public static class StaffEndpoints
         AuditLogger.Record(
             db,
             martId,
-            currentUserId.Value,
+            currentUser.Id,
             entityType: "User",
             entityId: manager.Id,
             action: "Created",
             oldValues: null,
-            newValues: new { manager.FirstName, manager.LastName, manager.Email, Role = "Manager" },
+            newValues: new { manager.FirstName, manager.LastName, manager.Email, manager.BranchId, Role = "Manager" },
             httpContext);
 
         await db.SaveChangesAsync();
@@ -97,36 +128,38 @@ public static class StaffEndpoints
 
     private static async Task<IResult> GetStaff(AppDbContext db, HttpContext httpContext)
     {
-        var currentUserId = await RequireOwnerAsync(db, httpContext);
-        if (currentUserId is null)
+        var currentUser = await RequireCreatorWithStaffPermissionAsync(db, httpContext);
+        if (currentUser is null)
         {
             return Results.Unauthorized();
         }
 
-        // No IgnoreQueryFilters() on the Roles side: Role's own filter already allows MartId ==
-        // null (system Roles), so it was never needed - and calling it here disabled EF Core's
-        // tenant filter for the WHOLE composed query, including the Users side, leaking every
-        // Mart's staff to every Owner. Found and fixed 2026-11-18 while building Story 1.5.
+        // No IgnoreQueryFilters() anywhere in this composed query: calling it on one side of a
+        // Join disables EF Core's tenant filter for the WHOLE query, not just that side -
+        // confirmed root cause of a real cross-Mart leak here, fixed 2026-11-18 (see git history).
         var staff = await db.Users
-            .Join(db.Roles, u => u.RoleId, r => r.Id, (u, r) => new { u, r.Name })
-            .Select(x => new
+            .Join(db.Roles, u => u.RoleId, r => r.Id, (u, r) => new { u, RoleName = r.Name })
+            .GroupJoin(db.Branches, x => x.u.BranchId, b => (Guid?)b.Id, (x, branches) => new { x.u, x.RoleName, branches })
+            .SelectMany(x => x.branches.DefaultIfEmpty(), (x, branch) => new
             {
                 id = x.u.Id,
                 staffId = x.u.StaffId.ToString(),
                 firstName = x.u.FirstName,
                 lastName = x.u.LastName,
                 email = x.u.Email,
-                role = x.Name,
+                role = x.RoleName,
                 active = x.u.PasswordHash != null || x.u.PinHash != null,
+                branchId = x.u.BranchId,
+                branchName = branch != null ? branch.Name : null,
             })
             .ToListAsync();
 
         return Results.Ok(staff);
     }
 
-    // Only a signed-in Owner may create or list staff - "manage staff" as a grantable Permission
-    // is the rest of Story 2.1, not built yet, so this is Owner-only for now, not Permission-based.
-    private static async Task<Guid?> RequireOwnerAsync(AppDbContext db, HttpContext httpContext)
+    // Owner passes via the identity bypass (holds no RolePermissions rows). Anyone else needs
+    // "manage staff and Roles" via their Role's RolePermissions.
+    private static async Task<User?> RequireCreatorWithStaffPermissionAsync(AppDbContext db, HttpContext httpContext)
     {
         var userIdValue = httpContext.Session.GetString("UserId");
         if (userIdValue is null)
@@ -136,8 +169,20 @@ public static class StaffEndpoints
 
         var userId = Guid.Parse(userIdValue);
         var user = await db.Users.IgnoreQueryFilters().SingleOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+        {
+            return null;
+        }
 
-        return user is not null && user.RoleId == RoleIds.Owner ? userId : null;
+        if (user.RoleId == RoleIds.Owner)
+        {
+            return user;
+        }
+
+        var hasStaffPermission = await db.RolePermissions
+            .AnyAsync(rp => rp.RoleId == user.RoleId && rp.PermissionId == PermissionIds.ManageStaffAndRoles);
+
+        return hasStaffPermission ? user : null;
     }
 
     private static Dictionary<string, string> Validate(CreateStaffRequest request)
@@ -186,5 +231,5 @@ public static class StaffEndpoints
 
     private static string NormalizeCnic(string cnic) => cnic.Replace("-", string.Empty).Trim();
 
-    public record CreateStaffRequest(string FirstName, string LastName, string Email, string Contact, string Cnic);
+    public record CreateStaffRequest(string FirstName, string LastName, string Email, string Contact, string Cnic, Guid? BranchId = null);
 }
