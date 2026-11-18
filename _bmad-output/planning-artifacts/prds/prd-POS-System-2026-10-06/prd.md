@@ -2,7 +2,7 @@
 title: "PRD: Cloud POS and Inventory SaaS for Marts"
 status: draft
 created: 2026-10-06
-updated: 2026-10-12
+updated: 2026-11-18
 ---
 
 # PRD: Cloud POS and Inventory SaaS for Marts
@@ -120,6 +120,8 @@ It is a multi-tenant SaaS product. A Super Admin registers Marts and their Owner
 #### FR-1: Accounts, Roles and Permissions
 The Owner can create staff accounts (name, optional phone number, Branch and Role), disable them, define Roles by choosing Permissions from a fixed list, and assign each user a Role per Branch. Cashier and Manager ship as starter Roles: Cashier has sell and request Return; Manager has every Permission except view dashboard. Decided by the product owner on 2026-10-13.
 
+**Superseded 2026-11-18 (spine AD-16):** "assign each user a Role per Branch" read as possibly more than one Branch per user; the product owner narrowed this to **at most one Branch per Mart** per account (the Owner stays Mart-wide/no Branch). A person in two Marts still needs two separate accounts, each independently scoped (already true via the Mart-code+email login identifier below).
+
 **Permission list** (fixed; these names are used throughout this PRD). `[ASSUMPTION]` first cut, to be refined in UX and architecture.
 
 | Permission | Allows |
@@ -144,7 +146,7 @@ The Owner can create staff accounts (name, optional phone number, Branch and Rol
 - A user can never approve their own Return, whatever their Role.
 - The Owner holds every Permission in every Branch and cannot be edited down.
 - A user with manage staff and Roles can create, edit or assign only Roles whose Permissions they hold themselves, and cannot change their own Role. This stops a Manager from granting anyone, including themselves, view dashboard.
-- Permission scope: Roles are assigned per Branch, but some data is Mart-wide (Products and the Mart price, suppliers, Roles, the Audit Log). A Permission acts on Mart-wide data only if the user holds it in every active Branch of the Mart. Otherwise it acts only on the data of the Branches where they hold it (for example Branch prices and reorder levels, staff assigned to those Branches). Decided by the product owner on 2026-10-13.
+- Permission scope: Roles are assigned per Branch, but some data is Mart-wide (Products and the Mart price, suppliers, Roles, the Audit Log). A Permission acts on Mart-wide data only if the user holds it in every active Branch of the Mart. Otherwise it acts only on the data of the Branches where they hold it (for example Branch prices and reorder levels, staff assigned to those Branches). Decided by the product owner on 2026-10-13. **Superseded 2026-11-18 (spine AD-16):** since a user now holds at most one Branch per Mart, "holds it in every active Branch" can only ever be true in a single-Branch Mart. In practice, Mart-wide data is reachable only by the Owner as soon as a Mart has 2+ Branches — confirmed by the product owner as the intended v1 behavior, not deferred.
 - A non-Owner with manage staff and Roles can create, disable and reassign only staff whose Role is lower than theirs (same rule as PIN resets, FR-27). Decided by the product owner on 2026-10-13.
 - A disabled account cannot log in on any online device. An offline Counter may still accept that account until its next Sync, but never longer than the offline limit in FR-15. After that, the account is refused.
 - Accounts never carry across Marts. A suspended Mart blocks only its own accounts.
@@ -508,7 +510,7 @@ A Super Admin can create a Mart with its Owner, send the Owner a one-time setup 
 **Functional Requirements:**
 
 #### FR-26: Manage Branches
-The Owner can create, edit and deactivate Branches and assign staff to them. Creating and deactivating Branches is Owner-only. A user with manage Branches and devices can edit the settings of Branches they are assigned to. Branch settings: name, time zone (NFR-11), cutover date (FR-14), and the local time of the nightly stock balance check (default 03:00). Decided by the product owner on 2026-10-13.
+The Owner can create, edit and deactivate Branches and assign staff to them. Creating and deactivating Branches is Owner-only. A user with manage Branches and devices can edit the settings of Branches they are assigned to. Branch settings: name, location, time zone (NFR-11), cutover date (FR-14), and the local time of the nightly stock balance check (default 03:00). Decided by the product owner on 2026-10-13; **location added 2026-11-18** (spine AD-16) — a free-text address, required when the Branch is created.
 
 **Consequences (testable):**
 - Every Stock Event, Sale, Return, Delivery, Shift and Registered Device belongs to exactly one Branch.

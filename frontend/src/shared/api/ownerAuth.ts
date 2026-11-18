@@ -1,11 +1,12 @@
 import { apiFetch } from './client'
 
 export type OwnerSessionInfo = {
-  ownerId: string
+  userId: string
   martId: string
   martName: string
   firstName: string
   lastName: string
+  role: string
 }
 
 export type ActivateOwnerResult =
@@ -27,15 +28,16 @@ function isOwnerSessionInfo(value: unknown): value is OwnerSessionInfo {
   }
   const candidate = value as Record<string, unknown>
   return (
-    typeof candidate.ownerId === 'string' &&
+    typeof candidate.userId === 'string' &&
     typeof candidate.martId === 'string' &&
     typeof candidate.martName === 'string' &&
     typeof candidate.firstName === 'string' &&
-    typeof candidate.lastName === 'string'
+    typeof candidate.lastName === 'string' &&
+    typeof candidate.role === 'string'
   )
 }
 
-// Calls POST /api/v1/owners/activate. Never throws: any failure maps to a typed result.
+// Calls POST /api/v1/auth/activate. Never throws: any failure maps to a typed result.
 // The backend returns one specific message for a failed password-complexity check and a single
 // generic message for every other rejection (unknown Mart/email, used/expired setup code) - that
 // generic message never reveals which part of the triple was wrong, so it surfaces as a banner,
@@ -47,7 +49,7 @@ export async function activate(
   password: string,
 ): Promise<ActivateOwnerResult> {
   try {
-    const response = await apiFetch('/owners/activate', {
+    const response = await apiFetch('/auth/activate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -70,12 +72,12 @@ export async function activate(
   }
 }
 
-// Calls POST /api/v1/owners/sign-in. Sets a session cookie on success.
+// Calls POST /api/v1/auth/sign-in. Sets a session cookie on success.
 // Never throws: any failure (network error, 401, unexpected status/body) maps to a typed result
 // with a generic reason - never reveals which part of the Mart code/email/password was wrong.
 export async function signIn(martCode: string, email: string, password: string): Promise<SignInOwnerResult> {
   try {
-    const response = await apiFetch('/owners/sign-in', {
+    const response = await apiFetch('/auth/sign-in', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -98,11 +100,11 @@ export async function signIn(martCode: string, email: string, password: string):
   }
 }
 
-// Calls POST /api/v1/owners/sign-out. Clears the session cookie.
+// Calls POST /api/v1/auth/sign-out. Clears the session cookie.
 // Never throws: callers should clear local auth UI state regardless of the result.
 export async function signOut(): Promise<OwnerSignOutResult> {
   try {
-    const response = await apiFetch('/owners/sign-out', {
+    const response = await apiFetch('/auth/sign-out', {
       method: 'POST',
       credentials: 'include',
       signal: AbortSignal.timeout(5000),
@@ -116,12 +118,12 @@ export async function signOut(): Promise<OwnerSignOutResult> {
   }
 }
 
-// Calls GET /api/v1/owners/session. Used on app load / page refresh to restore a persisted
+// Calls GET /api/v1/auth/session. Used on app load / page refresh to restore a persisted
 // session without re-prompting, and to get the Owner/Mart display fields back without a second
 // round-trip. Never throws: any failure maps to { ok: false }.
 export async function getSession(): Promise<OwnerSessionResult> {
   try {
-    const response = await apiFetch('/owners/session', {
+    const response = await apiFetch('/auth/session', {
       credentials: 'include',
       signal: AbortSignal.timeout(5000),
     })

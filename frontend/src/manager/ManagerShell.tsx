@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Drawer from '@mui/material/Drawer'
 import { useNavigate } from 'react-router-dom'
 import { PageHeaderProvider } from './layout/PageHeaderProvider'
 import { PageLayout } from './layout/PageLayout'
-import { Sidebar } from './layout/Sidebar'
+import { Sidebar, type SidebarUserDisplay } from './layout/Sidebar'
+import { BottomNav } from './layout/BottomNav'
 import { SIDEBAR_EXPANDED_WIDTH } from './layout/constants'
 import type { NavItem } from './layout/navConfig'
 import { useSidebarCollapsed } from './layout/useSidebarCollapsed'
@@ -18,6 +19,14 @@ export type ManagerShellProps = {
   onSignOut: () => Promise<unknown>
   /** Where to send the user once sign-out settles - that area's own sign-in route. */
   signOutRedirectPath: string
+  /** Fetches what to show about the signed-in account in the sidebar (name, Role/Mart caption) -
+   * every signed-in area supplies one today, so Sidebar's UserProfileMenu always ends up
+   * rendering once it resolves; still optional since it's meaningless before anyone's signed in. */
+  getUserDisplay?: () => Promise<SidebarUserDisplay | null>
+  /** The Owner's Branch filter (AD-16/FR-18) - omitted for session types with nothing to scope
+   * by Branch (e.g. Super Admin, and Manager once that exists, which is hard-scoped to one
+   * Branch and gets no selector at all). */
+  branchSelector?: ReactNode
 }
 
 // Layout-only root for the Manager/Owner entry point: a sidebar alongside PageLayout, which owns
@@ -26,12 +35,39 @@ export type ManagerShellProps = {
 // individual screen. Nav items and the sign-out call are passed in per route group (see main.tsx)
 // since Super Admin and Owner are different session types with their own nav and their own
 // sign-out endpoint - Sidebar/Header themselves need no changes for this.
-export function ManagerShell({ navItems, onSignOut, signOutRedirectPath }: ManagerShellProps) {
+export function ManagerShell({ navItems, onSignOut, signOutRedirectPath, getUserDisplay, branchSelector }: ManagerShellProps) {
   const navigate = useNavigate()
   const [signingOut, setSigningOut] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [userDisplay, setUserDisplay] = useState<SidebarUserDisplay | null>(null)
   const { collapsed, toggleCollapsed } = useSidebarCollapsed()
   const styles = useManagerShellStyles({ sidebarCollapsed: collapsed })
+  const activeRef = useRef(true)
+
+  useEffect(() => {
+    activeRef.current = true
+    return () => {
+      activeRef.current = false
+    }
+  }, [])
+
+  // Referenced from the effect below rather than called inline, so the fetch-on-mount pattern
+  // reads the same as every other "load on mount" component here (e.g. MartsList) instead of
+  // calling setState directly in the effect body.
+  const loadUserDisplay = useCallback(() => {
+    if (!getUserDisplay) {
+      return
+    }
+    void getUserDisplay().then((result) => {
+      if (activeRef.current) {
+        setUserDisplay(result)
+      }
+    })
+  }, [getUserDisplay])
+
+  useEffect(() => {
+    loadUserDisplay()
+  }, [loadUserDisplay])
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -51,6 +87,8 @@ export function ManagerShell({ navItems, onSignOut, signOutRedirectPath }: Manag
             onToggleCollapsed={toggleCollapsed}
             onSignOut={() => void handleSignOut()}
             signingOut={signingOut}
+            userDisplay={userDisplay}
+            branchSelector={branchSelector}
           />
         </Box>
 
@@ -67,12 +105,16 @@ export function ManagerShell({ navItems, onSignOut, signOutRedirectPath }: Manag
             onNavigate={() => setMobileNavOpen(false)}
             onSignOut={() => void handleSignOut()}
             signingOut={signingOut}
+            userDisplay={userDisplay}
+            branchSelector={branchSelector}
           />
         </Drawer>
 
         <Box sx={styles.contentColumn}>
           <PageLayout onOpenMobileNav={() => setMobileNavOpen(true)} />
         </Box>
+
+        <BottomNav items={navItems} moreOpen={mobileNavOpen} onMore={() => setMobileNavOpen(true)} />
       </Box>
     </PageHeaderProvider>
   )

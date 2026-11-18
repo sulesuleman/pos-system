@@ -3,7 +3,16 @@ import Box from '@mui/material/Box'
 import { Outlet } from 'react-router-dom'
 import { ScrollToTopButton } from '../../../shared/common/Buttons/ScrollToTopButton'
 import { Header } from '../Header'
+import { BOTTOM_NAV_HEIGHT } from '../constants'
 import { usePageLayoutStyles } from './usePageLayoutStyles'
+
+// Clear of the fixed BottomNav plus its own 16px gap and the safe-area inset, below `tablet`
+// only - at `tablet`+ there's no bottom bar to clear (same breakpoint BottomNav itself uses).
+const SCROLL_TOP_BOTTOM_OFFSET = {
+  xs: `calc(${BOTTOM_NAV_HEIGHT}px + 16px + env(safe-area-inset-bottom))`,
+  tablet: 16,
+  laptop: 24,
+}
 
 // Scrolling past this many pixels is what triggers the header's blurred/bordered look.
 const SCROLL_THRESHOLD_PX = 4
@@ -37,9 +46,11 @@ export function PageLayout({ onOpenMobileNav }: PageLayoutProps) {
     <Box ref={containerRef} sx={styles.container}>
       <Header onOpenMobileNav={onOpenMobileNav} scrolled={scrolled} />
       <Box component="main" sx={styles.panel}>
-        <Outlet />
+        <Box sx={styles.content}>
+          <Outlet />
+        </Box>
       </Box>
-      <ScrollToTopButton containerRef={containerRef} />
+      <ScrollToTopButton containerRef={containerRef} bottomOffset={SCROLL_TOP_BOTTOM_OFFSET} />
     </Box>
   )
 }

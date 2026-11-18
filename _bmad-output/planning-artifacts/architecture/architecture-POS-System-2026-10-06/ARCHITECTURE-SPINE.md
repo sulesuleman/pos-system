@@ -7,7 +7,7 @@ paradigm: 'Modular monolith (cloud) with a Counter client that syncs in real tim
 scope: 'Multi-tenant cloud POS and inventory (Mart > Branch > Counter), whole system'
 status: draft
 created: 2026-10-06
-updated: 2026-11-10
+updated: 2026-11-18
 binds: [FR-1, FR-2, FR-3, FR-8, FR-15, FR-16, FR-22, FR-24, FR-25, FR-26, FR-28, NFR-1, NFR-2, NFR-3, NFR-6, NFR-8, NFR-10, NFR-11]
 sources: [prd-POS-System-2026-10-06]
 companions: []
@@ -278,8 +278,36 @@ graph TB
   - Owner's and Manager's activation (`/auth/activate`) and sign-in (`/auth/sign-in`) endpoints are generalized and shared — both Roles follow the identical Mart code + email + setup-code-then-password flow (FR-25); nothing in that flow differs by Role, so one implementation serves both. Counter-role's Staff ID + PIN login (FR-27) stays a separate, unshared endpoint once built, since it's a structurally different flow (no email, no setup code).
 - Decided 2026-11-17, user-driven (building Manager account creation/activation/login surfaced that Story 1.3's single-purpose `Owner` table didn't generalize to a second Role, and the user chose to fix the schema now rather than bolt on a one-off `Manager` table).
 
+### AD-16 — Users hold at most one Branch per Mart; real Permissions replace name-only Roles [ADOPTED]
+
+- **Binds:** AD-15 (Users/Roles schema), AD-5 (role/branch/device enforcement), FR-1 (Roles/Permissions), FR-26 (Branches), Epic 2
+- **Prevents:** a Role that is just a name with no actual Permission set; a Manager/other-Role account with no Branch to scope it to; hardcoded Owner/Manager name checks standing in for a Permission check.
+- **Rule:**
+  - **`Users.BranchId`** (new, nullable, FK → `Branches.Id`, `Restrict`): `null` = Mart-wide (Owner only); set = scoped to exactly that one Branch. A `User` belongs to **at most one Branch per Mart**. A person active in a second Mart still needs a second, independent `User` row (already true today via AD-4's `(MartId, Email)` uniqueness) with its own, independently-set `BranchId` — cross-Mart multi-role falls out of the existing schema for free and needed no change.
+  - This narrows FR-1's and AD-5's existing wording ("Roles are assigned per Branch" / "a Role per Branch"), which read as a user possibly holding a Role across several Branches of the same Mart. That's superseded: one Branch, or none (Mart-wide Owner), per account.
+  - **New `Permissions` table** (fixed, seeded via `HasData`, not Mart-customizable): the 14 Permissions already listed in PRD FR-1 (`sell`, `request Return`, `approve Return`, `manage Products`, `manage Deliveries`, `manage suppliers`, `run Spot Counts`, `close Shifts`, `view dashboard`, `view Exceptions Report`, `view Audit Log`, `manage staff and Roles`, `reset PINs`, `manage Branches and devices`).
+  - **New `RolePermissions` join table** (`RoleId`, `PermissionId`, composite PK): what a Role actually grants. Seeded for the starter Roles — Manager gets every Permission except `view dashboard` (decided 2026-10-13); Cashier gets `sell` + `request Return`. The Owner Role gets **no** `RolePermissions` rows — Owner access stays an identity check (`RoleId == RoleIds.Owner` bypasses every Permission check), per FR-1's "the Owner is not an editable Role."
+  - `Branches` gains the columns FR-26/AD-12 already call for but the Story 1.1 baseline never added: `Location`, `TimeZone` (IANA, default `Asia/Karachi`), `IsActive`, `CreatedByUserId` (FK → `Users.Id`).
+  - `POST /staff` stops hardcoding "Owner-only" and instead checks the signed-in User's Role holds `manage staff and Roles` (Owner always passes via the identity-check bypass above). The new staff row's `BranchId` is: the creator's own `BranchId` if the creator is Branch-scoped; if the creator is Owner, the Branch selected in the Owner's Branch-selector (auto-assigned if exactly one Branch is selected there, otherwise a dropdown limited to the selected set).
+  - **Consequence, confirmed 2026-11-18 (not deferred):** every non-Owner Permission is evaluated against that user's own single Branch only, never Mart-wide. So Mart-wide data (Product catalog, Mart price, suppliers, Roles, Audit Log) is reachable **only by the Owner** as soon as a Mart has more than one Branch — no Manager or custom Role, however permissioned, can act on it, because none of them can be assigned to more than one Branch. This supersedes FR-1's 2026-10-13 rule that a Permission acts on Mart-wide data "if the user holds it in every active Branch."
+  - Mart registration still does **not** create a first Branch (confirmed 2026-11-18) — Branch creation stays the Owner's own post-activation action (FR-26/Story 1.6), unchanged from the existing PRD.
+  - Owner's Branch-selector (all-Branches default, filterable to a subset) is UI/query-scope state only, not a schema change.
+- Decided 2026-11-18, user-driven (clarifying how Epic 2's Role/Branch/Staff design should actually work surfaced that AD-15's single Mart-wide `RoleId` with no Branch link didn't match FR-1's Branch-scoped Permission model; the user resolved every open fork directly rather than Claude recommending defaults).
+
+### AD-17 — Mart Audit Log: one append-only table, old/new values as JSON snapshots [ADOPTED]
+
+- **Binds:** FR-20, Story 1.5 (and every audited write from here on, including Story 1.6's Branch/Mart-settings changes)
+- **Prevents:** a log editable or deletable from inside the app; a separate ad-hoc audit table per feature duplicating the same shape.
+- **Rule:**
+  - One Mart-scoped `AuditLogEntries` table serves every feature, not a table per entity type: `Id`, `MartId` (FK → `Marts.Id`, `Restrict`), `UserId` (FK → `Users.Id`, `Restrict` — who made the change; Users are never deleted in this app, so this FK never blocks on that), `EntityType` (string, e.g. `"Branch"`, `"MartSettings"`, `"User"`, `"Role"`), `EntityId` (`Guid?` — null for Mart-wide settings changes that have no separate entity id), `Action` (string, e.g. `"Created"`, `"Updated"`, `"Deactivated"`), `OldValuesJson` (`string?`), `NewValuesJson` (`string?`), `OccurredAtUtc` (UTC), `UserAgent`/`IpAddress` (`string?` — "from which device or browser," FR-20).
+  - **Immutability mechanism:** no update or delete path exists anywhere in the API for this table — simply never build one. Same pattern already used for the existing `PlatformAuditLogEntries` table.
+  - An entry is written in the **same transaction** as the change it audits (added to the same `DbContext` before the one `SaveChangesAsync`), not a follow-up call.
+  - Old/new values capture only the fields that actually changed, as JSON, not the whole entity — keeps rows small and never risks logging something like a password hash.
+  - `GET /api/v1/audit-log` (Owner, or a user holding `view Audit Log`): filters by date range, `UserId`, `EntityType`; newest first; Mart-scoped via the standard query filter, same as every other table.
+- Decided 2026-11-18, while sequencing Story 1.6 (FR-26 needs every Branch/Mart-setting change audited, and Story 1.5 — the only thing that provides that — didn't exist yet as an AD). User chose to build Story 1.5 before Story 1.6's endpoints rather than ship 1.6 without audit writes and backfill later.
+
 ## Deferred
 
 - **Hosting platform:** not chosen. It must support hourly (point-in-time) SQL Server backups (PRD NFR-2, per AD-14). Chosen and recorded as an AD in Story 1.8.
-- **Not yet governed by an AD:** Audit Log immutability (FR-20), device token lifecycle (FR-22), background jobs (500,000-row Product import, opening stock import, scheduled stock balance check), and the push vs short polling mechanism for real-time sync (chosen in Story 4.4; it must carry catalog changes, Return decisions and staff and device changes to Counters).
+- **Not yet governed by an AD:** device token lifecycle (FR-22), background jobs (500,000-row Product import, opening stock import, scheduled stock balance check), and the push vs short polling mechanism for real-time sync (chosen in Story 4.4; it must carry catalog changes, Return decisions and staff and device changes to Counters).
 - **Provider and database versions:** local dev uses SQL Server 2025 Developer Edition (AD-14); production SQL Server version not yet pinned — revisit once a hosting platform (Story 1.8) is chosen (most managed hosts cap out below 2025).

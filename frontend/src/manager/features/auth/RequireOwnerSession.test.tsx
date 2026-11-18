@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { RequireOwnerSession } from './RequireOwnerSession'
 import * as ownerAuth from '../../../shared/api/ownerAuth'
 
-const OWNER = { ownerId: '1', martId: '2', martName: 'Test Mart', firstName: 'Ayesha', lastName: 'Khan' }
+const OWNER = { userId: '1', martId: '2', martName: 'Test Mart', firstName: 'Ayesha', lastName: 'Khan', role: 'Owner' }
 
 function renderGuarded() {
   return render(

@@ -26,7 +26,7 @@ describe('OwnerArea', () => {
   it('shows who is signed in and to which Mart once the session loads', async () => {
     vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({
       ok: true,
-      owner: { ownerId: '1', martId: '2', martName: 'Test Mart', firstName: 'Ayesha', lastName: 'Khan' },
+      owner: { userId: '1', martId: '2', martName: 'Test Mart', firstName: 'Ayesha', lastName: 'Khan', role: 'Owner' },
     })
 
     renderArea()

@@ -1,4 +1,5 @@
 import { useTheme, type SxProps, type Theme } from '@mui/material/styles'
+import { BOTTOM_NAV_HEIGHT } from '../constants'
 
 // Style/sx objects for PageLayout. Kept separate from index.tsx per this app's shared-component
 // convention: a reusable component never inlines its styles.
@@ -26,16 +27,40 @@ export function usePageLayoutStyles() {
     },
   }
 
-  // No distinct card surface or width cap here (deliberately, per this app's own direction) -
-  // content sits directly on the canvas, full width, growing to at least fill the container so
-  // a short page doesn't look like it's floating in a half-empty scroll area.
+  // No distinct card surface here (deliberately, per this app's own direction) - content sits
+  // directly on the canvas, growing to at least fill the container so a short page doesn't look
+  // like it's floating in a half-empty scroll area. It does pick up two structural things the
+  // reference app's own panel has that this one was missing: a rounded top-left corner, easing
+  // the seam under the sticky Header (laptop+ only - on a phone/tablet the panel runs the full
+  // window width, where a rounded corner would just look like a stray clipped pixel), and
+  // bottom clearance below `tablet` so content never sits under the fixed BottomNav.
   const panel: SxProps<Theme> = {
     position: 'relative',
     flex: '1 0 auto',
     display: 'flex',
     flexDirection: 'column',
+    borderTopLeftRadius: { xs: 0, laptop: Number(theme.shape.borderRadius) * 2 },
     p: { xs: 2, laptop: 3 },
+    pb: {
+      xs: `calc(${BOTTOM_NAV_HEIGHT}px + env(safe-area-inset-bottom) + ${theme.spacing(2)})`,
+      tablet: 2,
+      laptop: 3,
+    },
   }
 
-  return { container, panel }
+  // The reference app caps very wide pages (`xxl`+) at a fixed content width, centred, rather
+  // than letting a 2560px-wide dashboard stretch a card edge-to-edge - this app's own
+  // breakpoints already anticipate that (`xxl`/`uhd`, see shared/theme/breakpoints.ts).
+  const content: SxProps<Theme> = {
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    minWidth: 0,
+    width: '100%',
+    maxWidth: { xs: '100%', xxl: 1920 },
+    mx: 'auto',
+  }
+
+  return { container, panel, content }
 }

@@ -26,7 +26,7 @@ function fillAndSubmit(martCode: string, email: string, password: string) {
   fireEvent.click(screen.getByRole('button', { name: 'Sign in' }))
 }
 
-const OWNER = { ownerId: '1', martId: '2', martName: 'Test Mart', firstName: 'Ayesha', lastName: 'Khan' }
+const OWNER = { userId: '1', martId: '2', martName: 'Test Mart', firstName: 'Ayesha', lastName: 'Khan', role: 'Owner' }
 
 describe('OwnerSignInPage', () => {
   afterEach(() => {
