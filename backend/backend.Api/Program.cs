@@ -38,6 +38,21 @@ builder.Services.AddSession(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantContext, SessionTenantContext>();
 
+// Dev default covers the Vite dev server (though it normally proxies /api same-origin, see
+// vite.config.ts); production origins go in that environment's own appsettings.
+const string FrontendCorsPolicy = "Frontend";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendCorsPolicy, policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials(); // the session cookie needs this - requires explicit origins above, never "*".
+    });
+});
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -67,7 +82,16 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+// Skipped in Development: the Vite dev proxy (vite.config.ts) deliberately targets the plain
+// HTTP port (5139), so redirecting it to HTTPS (7212) sends every proxied call on a 307 hop to a
+// different origin - breaking the session cookie and looking like a CORS failure in the browser.
+// Production enforces HTTPS at the hosting/reverse-proxy layer instead.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+
+app.UseCors(FrontendCorsPolicy);
 
 app.UseSession();
 

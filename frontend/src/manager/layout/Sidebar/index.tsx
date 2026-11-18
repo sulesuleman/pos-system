@@ -47,6 +47,18 @@ export function Sidebar({
   const styles = useSidebarStyles({ collapsed })
   const location = useLocation()
 
+  // A nav item is active on an exact path match or on one of its own sub-routes - but with
+  // sibling items sharing a path prefix (e.g. Home at "/owner" and Branches at
+  // "/owner/branches"), matching each item independently marks BOTH active on "/owner/branches".
+  // Pick only the longest (most specific) matching path instead, so a sub-route's own item wins.
+  const activeItemPath = items.reduce<string | null>((bestPath, item) => {
+    const matches = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+    if (!matches) {
+      return bestPath
+    }
+    return bestPath === null || item.path.length > bestPath.length ? item.path : bestPath
+  }, null)
+
   return (
     <Box sx={styles.root}>
       <Box sx={styles.brandRow}>
@@ -77,7 +89,7 @@ export function Sidebar({
           </Typography>
         )}
         {items.map((item) => {
-          const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+          const active = item.path === activeItemPath
           const link = (
             <Box key={item.path} component={Link} to={item.path} onClick={onNavigate} sx={styles.navItem(active)}>
               {item.icon}

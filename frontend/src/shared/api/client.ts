@@ -10,5 +10,9 @@ export function apiUrl(path: string): string {
 }
 
 export function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(apiUrl(path), init)
+  // 'include' is required for the session cookie to be sent/stored whenever a call crosses
+  // origins (e.g. hitting the backend host directly instead of through the Vite dev proxy) -
+  // without it, the browser silently drops Set-Cookie on the response and never sends the
+  // cookie back, so sign-in succeeds but every following request looks signed-out.
+  return fetch(apiUrl(path), { credentials: 'include', ...init })
 }

@@ -86,7 +86,7 @@ export const BranchesList = forwardRef<BranchesListHandle, BranchesListProps>(fu
     },
     {
       field: 'actions',
-      headerName: '',
+      headerName: 'Actions',
       flex: 0.75,
       sortable: false,
       filterable: false,
