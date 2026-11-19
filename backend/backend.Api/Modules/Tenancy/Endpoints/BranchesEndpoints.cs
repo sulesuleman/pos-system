@@ -167,16 +167,24 @@ public static class BranchesEndpoints
             branch.StockCheckLocalTime = request.StockCheckLocalTime.Value;
         }
 
-        AuditLogger.Record(
-            db,
-            branch.MartId,
-            user.Id,
-            entityType: "Branch",
-            entityId: branch.Id,
-            action: "Updated",
-            oldValues: oldValues,
-            newValues: new { branch.Name, branch.Location, branch.TimeZone, branch.CutoverDate, branch.StockCheckLocalTime },
-            httpContext);
+        var newValues = new { branch.Name, branch.Location, branch.TimeZone, branch.CutoverDate, branch.StockCheckLocalTime };
+
+        // Only when something actually changed - a resubmit of the same values (or a request
+        // with every optional field omitted) would otherwise write a no-op "Updated" audit row
+        // every time, contradicting Story 1.5's "only the changed fields" intent.
+        if (!AuditLogger.ValuesEqual(oldValues, newValues))
+        {
+            AuditLogger.Record(
+                db,
+                branch.MartId,
+                user.Id,
+                entityType: "Branch",
+                entityId: branch.Id,
+                action: "Updated",
+                oldValues: oldValues,
+                newValues: newValues,
+                httpContext);
+        }
 
         await db.SaveChangesAsync();
 

@@ -2,87 +2,15 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using backend.Api.Infrastructure.Persistence;
-using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy.Domain;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace backend.Api.Tests;
 
-public class MartsEndpointTests : IAsyncLifetime
+public class MartsEndpointTests : ApiTestFixtureBase
 {
-    private readonly string _connectionString;
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly string _superAdminEmail = $"test-{Guid.NewGuid():N}@example.com";
-    private const string SuperAdminPassword = "Test-Password-123!";
-
-    public MartsEndpointTests()
-    {
-        // A fresh throwaway database per test method (xUnit creates a new class instance per
-        // [Fact]) - same technique as MigrationTests/TenantIsolationTests - so "list is empty"
-        // is actually true, and tests never see another test's Marts.
-        var databaseName = $"PosSystem_ApiTests_{Guid.NewGuid():N}";
-        var baseConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Server=localhost;Database=PosSystem;Trusted_Connection=True;TrustServerCertificate=True;";
-        var connectionStringBuilder = new SqlConnectionStringBuilder(baseConnectionString)
-        {
-            InitialCatalog = databaseName,
-        };
-        _connectionString = connectionStringBuilder.ConnectionString;
-
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-        {
-            builder.UseSetting("ConnectionStrings:DefaultConnection", _connectionString);
-        });
-    }
-
-    public async Task InitializeAsync()
-    {
-        // Migrate and seed through a raw AppDbContext BEFORE touching _factory.Services -
-        // accessing the factory starts the real host, which runs Program.cs's own
-        // SuperAdminSeeder immediately against this database. If it doesn't exist/have the
-        // SuperAdmins table yet, that seeder fails outright (same ordering issue MigrationTests
-        // avoids the same way). Seeding our own SuperAdmin first also means the host's seeder
-        // sees a non-empty table and no-ops, so it never needs SuperAdmin:Email/Password config.
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(_connectionString)
-            .Options;
-
-        await using var db = new AppDbContext(options, tenantContext: null);
-        await db.Database.MigrateAsync();
-
-        var superAdmin = new SuperAdmin
-        {
-            Id = Guid.NewGuid(),
-            Email = _superAdminEmail,
-            PasswordHash = string.Empty,
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        var hasher = new PasswordHasher<SuperAdmin>();
-        superAdmin.PasswordHash = hasher.HashPassword(superAdmin, SuperAdminPassword);
-
-        db.SuperAdmins.Add(superAdmin);
-        await db.SaveChangesAsync();
-    }
-
-    public async Task DisposeAsync()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(_connectionString)
-            .Options;
-
-        await using (var db = new AppDbContext(options, tenantContext: null))
-        {
-            await db.Database.EnsureDeletedAsync();
-        }
-
-        await _factory.DisposeAsync();
-    }
-
     private async Task<HttpClient> SignedInClientAsync()
     {
         var client = _factory.CreateClient();

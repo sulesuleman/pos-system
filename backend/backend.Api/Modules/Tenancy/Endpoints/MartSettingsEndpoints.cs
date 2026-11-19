@@ -66,16 +66,22 @@ public static class MartSettingsEndpoints
         mart.DefaultTimeZone = request.DefaultTimeZone.Trim();
         mart.LongPendingReturnMinutes = request.LongPendingReturnMinutes;
 
-        AuditLogger.Record(
-            db,
-            mart.Id,
-            user.Id,
-            entityType: "MartSettings",
-            entityId: null,
-            action: "Updated",
-            oldValues: oldValues,
-            newValues: new { mart.Currency, mart.DefaultTimeZone, mart.LongPendingReturnMinutes },
-            httpContext);
+        var newValues = new { mart.Currency, mart.DefaultTimeZone, mart.LongPendingReturnMinutes };
+
+        // Only when something actually changed - see BranchesEndpoints.UpdateBranch for why.
+        if (!AuditLogger.ValuesEqual(oldValues, newValues))
+        {
+            AuditLogger.Record(
+                db,
+                mart.Id,
+                user.Id,
+                entityType: "MartSettings",
+                entityId: null,
+                action: "Updated",
+                oldValues: oldValues,
+                newValues: newValues,
+                httpContext);
+        }
 
         await db.SaveChangesAsync();
 

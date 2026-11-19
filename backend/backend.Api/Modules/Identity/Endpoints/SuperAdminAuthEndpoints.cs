@@ -1,4 +1,5 @@
 using backend.Api.Infrastructure.Persistence;
+using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -23,31 +24,14 @@ namespace backend.Api.Modules.Identity.Endpoints;
 
         if (superAdmin is null || verifyResult == PasswordVerificationResult.Failed)
         {
-            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-            {
-                Id = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "SuperAdminSignInFailed",
-                AttemptedEmail = request.Email,
-                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-            });
+            PlatformAuditLogger.Record(db, httpContext, "SuperAdminSignInFailed", attemptedEmail: request.Email);
             await db.SaveChangesAsync();
             return Results.Unauthorized();
         }
 
         httpContext.Session.SetString("SuperAdminId", superAdmin.Id.ToString());
 
-
-        db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            OccurredAtUtc = DateTime.UtcNow,
-            Action = "SuperAdminSignInSucceeded",
-            SuperAdminId = superAdmin.Id,
-            IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-            UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-        });
+        PlatformAuditLogger.Record(db, httpContext, "SuperAdminSignInSucceeded", superAdminId: superAdmin.Id);
         await db.SaveChangesAsync();
 
         return Results.Ok();
@@ -57,15 +41,11 @@ namespace backend.Api.Modules.Identity.Endpoints;
     {
         var superAdminIdValue = httpContext.Session.GetString("SuperAdminId");
 
-        db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            OccurredAtUtc = DateTime.UtcNow,
-            Action = "SuperAdminSignOut",
-            SuperAdminId = superAdminIdValue is null ? null : Guid.Parse(superAdminIdValue),
-            IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-            UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-        });
+        PlatformAuditLogger.Record(
+            db,
+            httpContext,
+            "SuperAdminSignOut",
+            superAdminId: superAdminIdValue is null ? null : Guid.Parse(superAdminIdValue));
         await db.SaveChangesAsync();
 
         httpContext.Session.Clear();

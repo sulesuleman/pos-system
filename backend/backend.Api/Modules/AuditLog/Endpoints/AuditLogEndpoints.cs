@@ -4,10 +4,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace backend.Api.Modules.AuditLog.Endpoints;
 
-// Owner-only for now - "view Audit Log" as a grantable Permission is the AD-16 Permissions/
-// RolePermissions slice, not built yet. Same pattern as StaffEndpoints.RequireOwnerAsync.
+// Owner, or a User whose Role grants the "view Audit Log" Permission (AD-16's
+// PermissionIds.ViewAuditLog) - same UserAuthorization.HasPermissionAsync pattern
+// BranchesEndpoints/StaffEndpoints already use, rather than the Owner-only check this started
+// with before AD-16's Permission system existed.
 public static class AuditLogEndpoints
 {
+    // Hard cap regardless of what the caller asks for, and the default when they ask for
+    // nothing - GetAuditLog has no other limit on how much history it can return otherwise.
+    private const int DefaultPageSize = 50;
+    private const int MaxPageSize = 200;
+
     public static void MapAuditLogEndpoints(this IEndpointRouteBuilder group)
     {
         group.MapGet("/audit-log", GetAuditLog);
@@ -19,10 +26,12 @@ public static class AuditLogEndpoints
         DateTime? from,
         DateTime? to,
         Guid? userId,
-        string? entityType)
+        string? entityType,
+        int? skip,
+        int? take)
     {
-        var currentUserId = await RequireOwnerAsync(db, httpContext);
-        if (currentUserId is null)
+        var user = await UserAuthorization.GetSignedInUserAsync(db, httpContext);
+        if (user is null || !await UserAuthorization.HasPermissionAsync(db, user, PermissionIds.ViewAuditLog))
         {
             return Results.Unauthorized();
         }
@@ -49,8 +58,15 @@ public static class AuditLogEndpoints
             query = query.Where(e => e.EntityType == entityType);
         }
 
+        // Clamped regardless of what the caller asks for - an unbounded or absurdly large `take`
+        // would otherwise materialize this Mart's entire audit history in one response.
+        var effectiveSkip = Math.Max(skip ?? 0, 0);
+        var effectiveTake = Math.Clamp(take ?? DefaultPageSize, 1, MaxPageSize);
+
         var entries = await query
             .OrderByDescending(e => e.OccurredAtUtc)
+            .Skip(effectiveSkip)
+            .Take(effectiveTake)
             // No IgnoreQueryFilters() here - Users is already correctly scoped to the same Mart,
             // and calling it on one side of a Join disables EF Core's tenant filter for the
             // WHOLE composed query, not just that side (confirmed root cause of a real
@@ -69,19 +85,5 @@ public static class AuditLogEndpoints
             .ToListAsync();
 
         return Results.Ok(entries);
-    }
-
-    private static async Task<Guid?> RequireOwnerAsync(AppDbContext db, HttpContext httpContext)
-    {
-        var userIdValue = httpContext.Session.GetString("UserId");
-        if (userIdValue is null)
-        {
-            return null;
-        }
-
-        var userId = Guid.Parse(userIdValue);
-        var user = await db.Users.IgnoreQueryFilters().SingleOrDefaultAsync(u => u.Id == userId);
-
-        return user is not null && user.RoleId == RoleIds.Owner ? userId : null;
     }
 }

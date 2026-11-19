@@ -35,4 +35,11 @@ public static class AuditLogger
             UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
         });
     }
+
+    // For an endpoint to skip Record entirely when an update changed nothing (e.g. a resubmit of
+    // the same values, or every optional field omitted) - compares the same way Record itself
+    // would serialize each side, so "equal" here always means "would have produced identical
+    // OldValuesJson/NewValuesJson".
+    public static bool ValuesEqual(object? oldValues, object? newValues) =>
+        JsonSerializer.Serialize(oldValues) == JsonSerializer.Serialize(newValues);
 }

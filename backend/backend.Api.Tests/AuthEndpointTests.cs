@@ -5,8 +5,6 @@ using backend.Api.Infrastructure.Persistence;
 using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy.Domain;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -17,72 +15,9 @@ namespace backend.Api.Tests;
 // (AD-15), so these tests exercise the shared activate/sign-in/sign-out/session behavior through
 // an Owner by default, plus a dedicated section proving a Manager works through the exact same
 // endpoints (see "Manager via the shared /auth endpoints" below).
-public class AuthEndpointTests : IAsyncLifetime
+public class AuthEndpointTests : ApiTestFixtureBase
 {
-    private readonly string _connectionString;
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly string _superAdminEmail = $"test-{Guid.NewGuid():N}@example.com";
-    private const string SuperAdminPassword = "Test-Password-123!";
     private const string OwnerPassword = "Owner-Pass1!";
-
-    public AuthEndpointTests()
-    {
-        // Same fresh-throwaway-database-per-test-method technique as MartsEndpointTests - xUnit
-        // creates a new class instance per [Fact], so each test gets its own Marts/Users.
-        var databaseName = $"PosSystem_ApiTests_{Guid.NewGuid():N}";
-        var baseConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Server=localhost;Database=PosSystem;Trusted_Connection=True;TrustServerCertificate=True;";
-        var connectionStringBuilder = new SqlConnectionStringBuilder(baseConnectionString)
-        {
-            InitialCatalog = databaseName,
-        };
-        _connectionString = connectionStringBuilder.ConnectionString;
-
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-        {
-            builder.UseSetting("ConnectionStrings:DefaultConnection", _connectionString);
-        });
-    }
-
-    public async Task InitializeAsync()
-    {
-        // Migrate and seed a SuperAdmin through a raw AppDbContext BEFORE touching
-        // _factory.Services - same ordering reason as MartsEndpointTests (accessing the factory
-        // starts the host, which runs Program.cs's own SuperAdminSeeder immediately).
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(_connectionString)
-            .Options;
-
-        await using var db = new AppDbContext(options, tenantContext: null);
-        await db.Database.MigrateAsync();
-
-        var superAdmin = new SuperAdmin
-        {
-            Id = Guid.NewGuid(),
-            Email = _superAdminEmail,
-            PasswordHash = string.Empty,
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        var hasher = new PasswordHasher<SuperAdmin>();
-        superAdmin.PasswordHash = hasher.HashPassword(superAdmin, SuperAdminPassword);
-
-        db.SuperAdmins.Add(superAdmin);
-        await db.SaveChangesAsync();
-    }
-
-    public async Task DisposeAsync()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(_connectionString)
-            .Options;
-
-        await using (var db = new AppDbContext(options, tenantContext: null))
-        {
-            await db.Database.EnsureDeletedAsync();
-        }
-
-        await _factory.DisposeAsync();
-    }
 
     private static Dictionary<string, string> ValidCreateMartBody(string martName, string ownerEmail) => new()
     {

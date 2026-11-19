@@ -89,21 +89,17 @@ public static class AuthEndpoints
 
     private static async Task<IResult> SignInAsync(SignInUserRequest request, AppDbContext db, HttpContext httpContext)
     {
+        if (string.IsNullOrEmpty(request.MartCode) || string.IsNullOrEmpty(request.Email) || string.IsNullOrEmpty(request.Password))
+        {
+            return Results.Unauthorized();
+        }
+
         var martCode = request.MartCode.Trim().ToUpperInvariant();
         var mart = await db.Marts.SingleOrDefaultAsync(m => m.Code == martCode);
 
         if (mart is not null && mart.Status == MartStatus.Suspended)
         {
-            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-            {
-                Id = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "UserSignInRefusedMartSuspended",
-                AttemptedEmail = request.Email,
-                AttemptedMartCode = martCode,
-                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-            });
+            PlatformAuditLogger.Record(db, httpContext, "UserSignInRefusedMartSuspended", attemptedEmail: request.Email, attemptedMartCode: martCode);
             await db.SaveChangesAsync();
             return MartSuspendedResult();
         }
@@ -123,16 +119,7 @@ public static class AuthEndpoints
 
         if (user is null || user.PasswordHash is null || verifyResult == PasswordVerificationResult.Failed)
         {
-            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-            {
-                Id = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "UserSignInFailed",
-                AttemptedEmail = request.Email,
-                AttemptedMartCode = martCode,
-                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-            });
+            PlatformAuditLogger.Record(db, httpContext, "UserSignInFailed", attemptedEmail: request.Email, attemptedMartCode: martCode);
             await db.SaveChangesAsync();
             return Results.Unauthorized();
         }
@@ -140,16 +127,7 @@ public static class AuthEndpoints
         httpContext.Session.SetString("UserId", user.Id.ToString());
         httpContext.Session.SetString("MartId", mart!.Id.ToString());
 
-        db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            OccurredAtUtc = DateTime.UtcNow,
-            Action = "UserSignInSucceeded",
-            AttemptedEmail = request.Email,
-            AttemptedMartCode = martCode,
-            IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-            UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-        });
+        PlatformAuditLogger.Record(db, httpContext, "UserSignInSucceeded", attemptedEmail: request.Email, attemptedMartCode: martCode);
         await db.SaveChangesAsync();
 
         var role = await db.Roles.IgnoreQueryFilters().SingleAsync(r => r.Id == user.RoleId);
@@ -167,14 +145,7 @@ public static class AuthEndpoints
 
     private static async Task<IResult> SignOut(HttpContext httpContext, AppDbContext db)
     {
-        db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-        {
-            Id = Guid.NewGuid(),
-            OccurredAtUtc = DateTime.UtcNow,
-            Action = "UserSignOut",
-            IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-            UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-        });
+        PlatformAuditLogger.Record(db, httpContext, "UserSignOut");
         await db.SaveChangesAsync();
 
         httpContext.Session.Clear();
@@ -201,6 +172,12 @@ public static class AuthEndpoints
             return Results.Unauthorized();
         }
 
+        // This branch never actually fires in production: Program.cs's suspension-check
+        // middleware already intercepts and 403s any request carrying a suspended Mart's session
+        // MartId before this handler runs. Kept anyway as defense-in-depth for a direct call to
+        // this handler (e.g. a test, or a future caller that bypasses the pipeline) - sharing
+        // MartSuspendedMessage with that middleware (rather than each hardcoding its own copy)
+        // means the two can never drift out of sync with each other.
         if (mart.Status == MartStatus.Suspended)
         {
             return MartSuspendedResult();
@@ -222,12 +199,12 @@ public static class AuthEndpoints
     // Story 1.7 (FR-25): the one distinct message every refused login/API request for a
     // suspended Mart should show, as opposed to a generic invalid-credentials/unauthorized
     // response. 403, not 401 - the credentials/session are fine, the Mart itself is the reason.
-    // The full user-facing sentence is sent from here (not a terse code the frontend maps
-    // itself) so there is exactly one place that owns this wording.
+    // Public so Program.cs's suspension-check middleware can reuse it instead of hand-duplicating
+    // the sentence - there is exactly one place that owns this wording.
+    public const string MartSuspendedMessage = "This Mart has been suspended. Contact the platform administrator for help.";
+
     private static IResult MartSuspendedResult() =>
-        Results.Json(
-            new { error = "This Mart has been suspended. Contact the platform administrator for help." },
-            statusCode: StatusCodes.Status403Forbidden);
+        Results.Json(new { error = MartSuspendedMessage }, statusCode: StatusCodes.Status403Forbidden);
 }
 
 public record ActivateUserRequest(string MartCode, string Email, string SetupCode, string Password);

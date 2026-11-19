@@ -11,12 +11,11 @@ public static class UserAuthorization
     public static async Task<User?> GetSignedInUserAsync(AppDbContext db, HttpContext httpContext)
     {
         var userIdValue = httpContext.Session.GetString("UserId");
-        if (userIdValue is null)
+        if (userIdValue is null || !Guid.TryParse(userIdValue, out var userId))
         {
             return null;
         }
 
-        var userId = Guid.Parse(userIdValue);
         return await db.Users.IgnoreQueryFilters().SingleOrDefaultAsync(u => u.Id == userId);
     }
 

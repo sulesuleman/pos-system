@@ -99,15 +99,7 @@ namespace backend.Api.Modules.Tenancy.Endpoints;
             };
             db.Users.Add(owner);
 
-            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-            {
-                Id = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "MartCreated",
-                SuperAdminId = Guid.Parse(superAdminIdValue),
-                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-            });
+            PlatformAuditLogger.Record(db, httpContext, "MartCreated", superAdminId: Guid.Parse(superAdminIdValue));
 
             // One SaveChangesAsync - Mart, Owner and the audit entry commit together or not at all.
             await db.SaveChangesAsync();
@@ -149,16 +141,7 @@ namespace backend.Api.Modules.Tenancy.Endpoints;
 
             mart.Status = MartStatus.Suspended;
 
-            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-            {
-                Id = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "MartSuspended",
-                SuperAdminId = Guid.Parse(superAdminIdValue),
-                AttemptedMartCode = mart.Code,
-                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-            });
+            PlatformAuditLogger.Record(db, httpContext, "MartSuspended", superAdminId: Guid.Parse(superAdminIdValue), attemptedMartCode: mart.Code);
 
             await db.SaveChangesAsync();
 
@@ -186,16 +169,7 @@ namespace backend.Api.Modules.Tenancy.Endpoints;
 
             mart.Status = MartStatus.Active;
 
-            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
-            {
-                Id = Guid.NewGuid(),
-                OccurredAtUtc = DateTime.UtcNow,
-                Action = "MartReactivated",
-                SuperAdminId = Guid.Parse(superAdminIdValue),
-                AttemptedMartCode = mart.Code,
-                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
-                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
-            });
+            PlatformAuditLogger.Record(db, httpContext, "MartReactivated", superAdminId: Guid.Parse(superAdminIdValue), attemptedMartCode: mart.Code);
 
             await db.SaveChangesAsync();
 

@@ -4,76 +4,16 @@ using System.Text.Json;
 using backend.Api.Infrastructure.Persistence;
 using backend.Api.Modules.Identity.Domain;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace backend.Api.Tests;
 
-public class BranchesEndpointTests : IAsyncLifetime
+public class BranchesEndpointTests : ApiTestFixtureBase
 {
-    private readonly string _connectionString;
-    private readonly WebApplicationFactory<Program> _factory;
-    private readonly string _superAdminEmail = $"test-{Guid.NewGuid():N}@example.com";
-    private const string SuperAdminPassword = "Test-Password-123!";
     private const string OwnerPassword = "Owner-Pass1!";
     private const string ManagerPassword = "Manager-Pass1!";
-
-    public BranchesEndpointTests()
-    {
-        var databaseName = $"PosSystem_ApiTests_{Guid.NewGuid():N}";
-        var baseConnectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Server=localhost;Database=PosSystem;Trusted_Connection=True;TrustServerCertificate=True;";
-        var connectionStringBuilder = new SqlConnectionStringBuilder(baseConnectionString)
-        {
-            InitialCatalog = databaseName,
-        };
-        _connectionString = connectionStringBuilder.ConnectionString;
-
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-        {
-            builder.UseSetting("ConnectionStrings:DefaultConnection", _connectionString);
-        });
-    }
-
-    public async Task InitializeAsync()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(_connectionString)
-            .Options;
-
-        await using var db = new AppDbContext(options, tenantContext: null);
-        await db.Database.MigrateAsync();
-
-        var superAdmin = new SuperAdmin
-        {
-            Id = Guid.NewGuid(),
-            Email = _superAdminEmail,
-            PasswordHash = string.Empty,
-            CreatedAtUtc = DateTime.UtcNow,
-        };
-        var hasher = new PasswordHasher<SuperAdmin>();
-        superAdmin.PasswordHash = hasher.HashPassword(superAdmin, SuperAdminPassword);
-
-        db.SuperAdmins.Add(superAdmin);
-        await db.SaveChangesAsync();
-    }
-
-    public async Task DisposeAsync()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(_connectionString)
-            .Options;
-
-        await using (var db = new AppDbContext(options, tenantContext: null))
-        {
-            await db.Database.EnsureDeletedAsync();
-        }
-
-        await _factory.DisposeAsync();
-    }
 
     private static Dictionary<string, string> ValidCreateMartBody(string martName, string ownerEmail) => new()
     {
