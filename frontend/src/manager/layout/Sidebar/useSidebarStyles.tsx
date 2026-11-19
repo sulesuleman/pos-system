@@ -54,7 +54,10 @@ export function useSidebarStyles({ collapsed }: { collapsed: boolean }) {
     display: 'flex',
     alignItems: 'center',
     gap: 1,
-    px: railPx,
+    // Flush (no inset) while collapsed, same as the reference's own `header` row (its
+    // CompanySelector/collapse-control row), so the centered content isn't pushed off-centre by
+    // padding that has nowhere useful to go in a rail this narrow.
+    px: collapsed ? 0 : railPx,
     justifyContent: collapsed ? 'center' : 'flex-start',
     color: white,
   }
@@ -103,11 +106,18 @@ export function useSidebarStyles({ collapsed }: { collapsed: boolean }) {
   const rowWithCaption: SxProps<Theme> = row(RAIL.rowWithCaption)
   const userRow: SxProps<Theme> = rowWithCaption
 
-  // The Owner's Branch filter, between the profile row and the nav list - BranchSelector applies
-  // its own side inset via `rowWithCaption`, so this wrapper only spaces it from its neighbours.
-  const branchSelectorRow: SxProps<Theme> = {
+  // The account row and the Branch filter, above the destinations - the reference's own
+  // `topStack`. Its `px` stacks with each row's own `px` (both the reference's `row` mixin and
+  // ours carry one already) rather than replacing it - same double inset the reference's own
+  // `navSection`/rows produce, so every row (account, Branch filter, nav item) lines up at the
+  // same depth regardless of which container it's in.
+  const topStack: SxProps<Theme> = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.5,
     flexShrink: 0,
-    pb: 0.5,
+    px: railPx,
+    pb: 1,
   }
 
   // A chevron beside a row's label that flips over while its popover is open - shared by the
@@ -120,13 +130,15 @@ export function useSidebarStyles({ collapsed }: { collapsed: boolean }) {
     transform: open ? 'rotate(180deg)' : 'none',
   })
 
+  // No top padding of its own - matches the reference's own `navSection`, which relies entirely
+  // on `groupTitle`'s own `pt` for the gap above the first row instead of double-padding it.
   const navList: SxProps<Theme> = {
     flex: 1,
     overflowY: 'auto',
     overflowX: 'hidden',
     overscrollBehavior: 'contain',
     px: railPx,
-    py: 1,
+    pb: 2,
     display: 'flex',
     flexDirection: 'column',
     gap: 0.5,
@@ -151,8 +163,8 @@ export function useSidebarStyles({ collapsed }: { collapsed: boolean }) {
   const groupTitle: SxProps<Theme> = {
     display: 'block',
     px: 1.5,
-    pt: 0.5,
-    pb: 0.75,
+    pt: 2,
+    pb: 0.5,
     fontSize: 11,
     lineHeight: '18px',
     fontWeight: 700,
@@ -225,13 +237,24 @@ export function useSidebarStyles({ collapsed }: { collapsed: boolean }) {
     },
   }
 
+  // The drawer/sheet forms (Sidebar rendered inside the tablet drawer or the phone "More" sheet)
+  // carry a close button at the end of the brand row instead of the rail's fold control - same
+  // plain-white-glyph treatment as every other control on the navy field.
+  const closeButton: SxProps<Theme> = {
+    flexShrink: 0,
+    ml: 1,
+    color: alpha(white, 0.8),
+    '&:hover': { color: white, bgcolor: alpha(white, 0.08) },
+    '&.Mui-focusVisible, &:focus-visible': { outline: `2px solid ${white}`, outlineOffset: 2 },
+  }
+
   return {
     root,
     brandRow,
     row,
     rowWithCaption,
     userRow,
-    branchSelectorRow,
+    topStack,
     chevron,
     userAvatar,
     navList,
@@ -241,5 +264,6 @@ export function useSidebarStyles({ collapsed }: { collapsed: boolean }) {
     bottomSection,
     signOutItem,
     collapseToggleFloating,
+    closeButton,
   }
 }

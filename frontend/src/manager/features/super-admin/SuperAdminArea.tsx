@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import { StyledButton } from '../../../shared/common/Buttons/StyledButton'
 import { usePageHeader } from '../../layout/pageHeaderStore'
 import { MartsList, type MartsListHandle } from './MartsList'
 import { CreateMartDialog } from './CreateMartDialog'
@@ -17,9 +17,11 @@ export function SuperAdminArea() {
     subheading: 'Every Mart on the platform, and where to register a new one.',
     icon: <StorefrontOutlinedIcon />,
     rightContent: (
-      <Button variant="contained" onClick={() => setDialogOpen(true)}>
+      // size="large" matches the reference app's own convention for a page-header's action
+      // button (its SButton usage on PageLayout's rightContent slot).
+      <StyledButton variant="contained" size="large" onClick={() => setDialogOpen(true)}>
         Create Mart
-      </Button>
+      </StyledButton>
     ),
   })
 

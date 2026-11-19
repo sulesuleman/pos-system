@@ -2,20 +2,20 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppThemeProvider } from '../../../shared/theme'
-import { Header } from '../../layout/Header'
+import { PageLayout } from '../../layout/PageLayout'
 import { PageHeaderProvider } from '../../layout/PageHeaderProvider'
 import { SuperAdminArea } from './SuperAdminArea'
 import * as marts from '../../../shared/api/marts'
 
-// The "Create Mart" button now renders via the shell's Header (its page-specific `actions`
-// slot - see PageHeaderContext), not inside SuperAdminArea itself, so Header has to be mounted
-// alongside it for that button to actually appear in the DOM here.
+// The "Create Mart" button now renders via the shell's PageLayout hero (its page-specific
+// `rightContent` slot - see PageHeaderContext), not inside SuperAdminArea itself, so PageLayout
+// has to be mounted alongside it for that button to actually appear in the DOM here.
 function renderArea() {
   return render(
     <AppThemeProvider>
       <MemoryRouter>
         <PageHeaderProvider>
-          <Header onOpenMobileNav={() => {}} scrolled={false} />
+          <PageLayout />
           <SuperAdminArea />
         </PageHeaderProvider>
       </MemoryRouter>

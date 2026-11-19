@@ -1,14 +1,13 @@
 import { useTheme, type SxProps, type Theme } from '@mui/material/styles'
 import { BOTTOM_NAV_HEIGHT } from '../constants'
 
-// Style/sx objects for BottomNav. Kept separate from index.tsx per this app's shared-component
-// convention: a reusable component never inlines its styles.
-export function useBottomNavStyles() {
+// Style/sx objects for PhoneBottomNav. Kept separate from index.tsx per this app's
+// shared-component convention: a reusable component never inlines its styles.
+export function usePhoneBottomNavStyles() {
   const theme = useTheme()
 
-  // Fixed to the viewport, clear of the home indicator - shown only below `tablet` (the same
-  // breakpoint StyledDialog/BottomDrawer already switch on), where the permanent sidebar and the
-  // header's hamburger-drawer give way to this instead.
+  // Fixed to the viewport, clear of the home indicator - shown only below `tablet`, where the
+  // permanent rail and the tablet band's drawer-hamburger both give way to this instead.
   const root: SxProps<Theme> = {
     display: { xs: 'flex', tablet: 'none' },
     position: 'fixed',
@@ -21,7 +20,7 @@ export function useBottomNavStyles() {
     px: 'max(4px, env(safe-area-inset-left))',
     bgcolor: 'background.paper',
     borderTop: `1px solid ${theme.palette.divider}`,
-    boxShadow: theme.customShadows.z8,
+    boxShadow: theme.customShadows.dropdown,
   }
 
   // Equal-width items; a long label is cut with an ellipsis rather than wrapped or shrinking the

@@ -33,40 +33,44 @@ export const typography = {
   fontWeightMedium: 500,
   fontWeightSemiBold: 600,
   fontWeightBold: 700,
+  // fontWeight 400 on every heading, h1 through h6 - matches the reference app's own typography.ts
+  // exactly (its headings are never bold; only subtitle/overline/button pick up weight). This app
+  // had drifted to 700 (h1/h2) and 600 (h3-h6) with no documented reason for the difference, which
+  // read as a different, heavier font next to the reference - aligned back to 400 (2026-11-19).
   h1: {
     fontFamily: FONT,
     letterSpacing: 0,
-    fontWeight: 700,
+    fontWeight: 400,
     ...heading([40, 64], [50, 80]),
   },
   h2: {
     fontFamily: FONT,
     letterSpacing: 0,
-    fontWeight: 700,
+    fontWeight: 400,
     ...heading([32, 48], [42, 64]),
   },
   h3: {
     fontFamily: FONT,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 400,
     ...heading([24, 32], [36, 48]),
   },
   h4: {
     fontFamily: FONT,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 400,
     ...heading([20, 24], [30, 36]),
   },
   h5: {
     fontFamily: FONT,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 400,
     ...heading([18, 20], [27, 30]),
   },
   h6: {
     fontFamily: FONT,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 400,
     ...heading([17, 18], [26, 28]),
   },
   subtitle1: {
@@ -112,10 +116,12 @@ export const typography = {
     fontSize: pxToRem(12),
     textTransform: 'uppercase',
   },
+  // fontWeight 500, same drift/fix as the headings above - the reference's own button variant
+  // is 500, not 600.
   button: {
     fontFamily: FONT,
     letterSpacing: 0,
-    fontWeight: 600,
+    fontWeight: 500,
     lineHeight: 24 / 14,
     fontSize: pxToRem(14),
     textTransform: 'unset',

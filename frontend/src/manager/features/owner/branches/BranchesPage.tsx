@@ -1,9 +1,9 @@
 import { useRef, useState } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
+import { StyledButton } from '../../../../shared/common/Buttons/StyledButton'
 import { usePageHeader } from '../../../layout/pageHeaderStore'
 import { StyledDialog } from '../../../../shared/common/Dialog'
 import { BranchesList, type BranchesListHandle } from './BranchesList'
@@ -30,13 +30,15 @@ export function BranchesPage() {
     subheading: 'Every shop location under your Mart.',
     icon: <StorefrontOutlinedIcon />,
     rightContent: (
+      // size="large" matches the reference app's own convention for a page-header's action
+      // button(s) (its SButton usage on PageLayout's rightContent slot).
       <Stack direction="row" spacing={1.5}>
-        <Button variant="outlined" onClick={() => setSettingsOpen(true)}>
+        <StyledButton variant="outlined" size="large" onClick={() => setSettingsOpen(true)}>
           Mart settings
-        </Button>
-        <Button variant="contained" onClick={() => setCreateOpen(true)}>
+        </StyledButton>
+        <StyledButton variant="contained" size="large" onClick={() => setCreateOpen(true)}>
           Create Branch
-        </Button>
+        </StyledButton>
       </Stack>
     ),
   })

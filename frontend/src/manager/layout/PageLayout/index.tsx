@@ -1,55 +1,117 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef } from 'react'
 import Box from '@mui/material/Box'
-import { Outlet } from 'react-router-dom'
+import Breadcrumbs from '@mui/material/Breadcrumbs'
+import IconButton from '@mui/material/IconButton'
+import Link from '@mui/material/Link'
+import Typography from '@mui/material/Typography'
+import { Link as RouterLink, Outlet } from 'react-router-dom'
+import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined'
+import NavigateNextOutlinedIcon from '@mui/icons-material/NavigateNextOutlined'
+import { Logo } from '../../../shared/common/Brand/Logo'
 import { ScrollToTopButton } from '../../../shared/common/Buttons/ScrollToTopButton'
-import { Header } from '../Header'
 import { BOTTOM_NAV_HEIGHT } from '../constants'
+import { usePageHeaderValue } from '../pageHeaderStore'
 import { usePageLayoutStyles } from './usePageLayoutStyles'
 
-// Clear of the fixed BottomNav plus its own 16px gap and the safe-area inset, below `tablet`
-// only - at `tablet`+ there's no bottom bar to clear (same breakpoint BottomNav itself uses).
+// Clear of the fixed PhoneBottomNav plus its own 16px gap and the safe-area inset, below
+// `tablet` only - at `tablet`+ there's no bottom bar to clear.
 const SCROLL_TOP_BOTTOM_OFFSET = {
   xs: `calc(${BOTTOM_NAV_HEIGHT}px + 16px + env(safe-area-inset-bottom))`,
   tablet: 16,
-  laptop: 24,
+  lg: 32,
 }
 
-// Scrolling past this many pixels is what triggers the header's blurred/bordered look.
-const SCROLL_THRESHOLD_PX = 4
-
-export type PageLayoutProps = {
-  /** Shown only below `laptop`, where the sidebar is a drawer instead of always on screen. */
-  onOpenMobileNav: () => void
-}
-
-// The content column's own frame, mirroring the reference app's PageLayout: ONE container
-// scrolls (not the page), the header pins to its top as that container scrolls under it, and
-// every route renders into the panel below it via Outlet. ScrollToTopButton watches this same
-// container, not the window.
-export function PageLayout({ onOpenMobileNav }: PageLayoutProps) {
+// The content column's own frame, ported from the reference app's own PageLayout
+// (AccessAndControl.Frontend's ui/components/PageLayout/PageLayout.tsx): a gradient hero that
+// stays pinned as the panel below it (one rounded corner) scrolls up over it. ONE surface
+// scrolls - this container - so there is one scrollbar, and ScrollToTopButton watches it. Every
+// route renders into the panel via Outlet; what the hero shows comes from PageHeaderProvider
+// (see pageHeaderStore), not props, so a route declares its own heading without ManagerShell or
+// PageLayout knowing anything about individual screens.
+export function PageLayout() {
   const styles = usePageLayoutStyles()
   const containerRef = useRef<HTMLDivElement>(null)
-  const [scrolled, setScrolled] = useState(false)
+  const config = usePageHeaderValue()
 
-  useEffect(() => {
-    const el = containerRef.current
-    if (!el) {
-      return
-    }
-    const onScroll = () => setScrolled(el.scrollTop > SCROLL_THRESHOLD_PX)
-    onScroll()
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [])
+  const breadcrumbs = config?.breadcrumbs ?? []
+  const hasActions = Boolean(config?.rightContent)
 
   return (
     <Box ref={containerRef} sx={styles.container}>
-      <Header onOpenMobileNav={onOpenMobileNav} scrolled={scrolled} />
-      <Box component="main" sx={styles.panel}>
-        <Box sx={styles.content}>
+      <Box component="header" sx={styles.logoBar}>
+        <Logo />
+        <Typography variant="subtitle1" noWrap sx={{ flex: 1, minWidth: 0 }}>
+          POS System
+        </Typography>
+      </Box>
+
+      {config && (
+        <Box component="header" className="page-layout-heading" sx={styles.hero(hasActions)}>
+          {breadcrumbs.length > 1 && (
+            <Box sx={styles.breadcrumbsRow}>
+              <Breadcrumbs separator={<NavigateNextOutlinedIcon sx={{ fontSize: 16 }} />} sx={styles.breadcrumbs}>
+                {breadcrumbs.map((crumb, index) =>
+                  crumb.path && index < breadcrumbs.length - 1 ? (
+                    <Link
+                      key={crumb.label}
+                      component={RouterLink}
+                      to={crumb.path}
+                      variant="body2"
+                      underline="hover"
+                      sx={{ color: 'inherit' }}
+                    >
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <Typography key={crumb.label} variant="body2" aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined} color="common.white">
+                      {crumb.label}
+                    </Typography>
+                  ),
+                )}
+              </Breadcrumbs>
+            </Box>
+          )}
+
+          {config.subheading && (
+            <Typography variant="h4" component="p" noWrap sx={styles.subheading}>
+              {config.subheading}
+            </Typography>
+          )}
+
+          <Box className="page-layout-title-row" sx={styles.titleRow}>
+            {config.onBack ? (
+              <IconButton aria-label="Back" onClick={config.onBack} sx={styles.backButton}>
+                <ArrowBackOutlinedIcon />
+              </IconButton>
+            ) : (
+              config.icon && (
+                <Box aria-hidden sx={styles.iconTile}>
+                  {config.icon}
+                </Box>
+              )
+            )}
+
+            <Typography variant="h1" component="h1" noWrap sx={styles.title}>
+              {config.heading}
+            </Typography>
+
+            {config.rightContent && (
+              <Box className="page-layout-actions" sx={styles.actionsRow}>
+                {config.rightContent}
+              </Box>
+            )}
+          </Box>
+
+          {config.tabs && <Box sx={styles.tabsRow}>{config.tabs}</Box>}
+        </Box>
+      )}
+
+      <Box component="main" className="page-layout-panel" sx={styles.panel(hasActions)}>
+        <Box className="page-layout-content" sx={styles.content}>
           <Outlet />
         </Box>
       </Box>
+
       <ScrollToTopButton containerRef={containerRef} bottomOffset={SCROLL_TOP_BOTTOM_OFFSET} />
     </Box>
   )

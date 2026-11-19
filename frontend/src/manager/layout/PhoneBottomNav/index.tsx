@@ -3,22 +3,22 @@ import BottomNavigationAction from '@mui/material/BottomNavigationAction'
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined'
 import { useLocation, useNavigate } from 'react-router-dom'
 import type { NavItem } from '../navConfig'
-import { useBottomNavStyles } from './useBottomNavStyles'
+import { usePhoneBottomNavStyles } from './usePhoneBottomNavStyles'
 
-export type BottomNavProps = {
+export type PhoneBottomNavProps = {
   items: NavItem[]
-  /** Whether the "More" sheet (the same mobile nav drawer ManagerShell already owns) is open. */
+  /** Whether the "More" sheet (Sidebar rendered full-width, with its own nav items hidden - see
+   * Sidebar's `hideNavItems`) is open. */
   moreOpen: boolean
   onMore: () => void
 }
 
-// The phone-width bottom navigation bar (see `frontend/CLAUDE.md`'s Layout section): the same
-// destinations Sidebar shows, plus a "More" action that opens the existing mobile nav drawer
-// (for sign-out and anything else the drawer alone carries) rather than duplicating that as a
-// second sheet. Shown only below `tablet` - laptop+ has the permanent rail, tablet-to-laptop
-// still uses the header's hamburger drawer alone, same as before this component existed.
-export function BottomNav({ items, moreOpen, onMore }: BottomNavProps) {
-  const styles = useBottomNavStyles()
+// The phone-width bottom navigation bar, below `tablet` - the same destinations Sidebar shows,
+// plus a "More" action that opens Sidebar itself as a bottom sheet (for the account row, Branch
+// filter and sign-out) rather than duplicating that as a second component. Ported from the
+// reference app's own PhoneBottomNav (AccessAndControl.Frontend's ui/layout/PhoneBottomNav.tsx).
+export function PhoneBottomNav({ items, moreOpen, onMore }: PhoneBottomNavProps) {
+  const styles = usePhoneBottomNavStyles()
   const location = useLocation()
   const navigate = useNavigate()
 

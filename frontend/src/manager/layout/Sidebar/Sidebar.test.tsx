@@ -76,4 +76,24 @@ describe('Sidebar', () => {
     )
     expect(screen.getByTestId('sign-out-button')).toBeDisabled()
   })
+
+  it('renders a close button and calls onClose when given (the drawer/sheet forms)', () => {
+    const onClose = vi.fn()
+    renderSidebar({ onClose })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('renders no close button when onClose is not given (the permanent rail)', () => {
+    renderSidebar()
+
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  })
+
+  it('hides the nav items when hideNavItems is set (the phone sheet, which leaves them to PhoneBottomNav)', () => {
+    renderSidebar({ hideNavItems: true })
+
+    expect(screen.queryByRole('link', { name: /Marts/ })).not.toBeInTheDocument()
+  })
 })

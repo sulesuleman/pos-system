@@ -59,6 +59,19 @@ describe('ManagerShell', () => {
     expect(backdrop.style.visibility).not.toBe('hidden')
   })
 
+  it("opens the same drawer from PhoneBottomNav's More action", () => {
+    renderShell()
+    const backdrop = document.querySelector('.MuiBackdrop-root') as HTMLElement
+    expect(backdrop.style.visibility).toBe('hidden')
+
+    fireEvent.click(screen.getByRole('button', { name: 'More' }))
+    expect(backdrop.style.visibility).not.toBe('hidden')
+
+    // The drawer's own Sidebar carries a close button (unlike the permanent rail, which has the
+    // fold control in its place).
+    expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument()
+  })
+
   it('toggles the sidebar between expanded and collapsed', () => {
     renderShell()
 
