@@ -27,4 +27,7 @@ No schema change needed - `Mart.Status`/`MartStatus` already existed from Story 
 ## Not done (explicitly out of scope)
 
 - Counter upload exemption during suspension (Story 7.9, Epic 7 - no Counter endpoints exist yet).
-- Super Admin UI for the suspend/reactivate buttons (frontend - the Tabbar/`MartStatus` type already exist per `shared/api/marts.ts`, but no action buttons wired up yet).
+
+## Frontend (2026-11-19)
+
+Added after this checklist's backend slice: `shared/api/marts.ts` gained `suspendMart`/`reactivateMart`; `MartsList` gained a Status chip (Active/Suspended) and a per-row action (Suspend with a confirm dialog mirroring Branches' own Deactivate confirm, since it blocks every sign-in for that Mart; Reactivate runs directly, with its own pending spinner, since it's reversible/low-risk). `SuperAdminArea` owns the confirm dialog + pending/error state and refreshes the list on success. Verified against a running dev server with a stubbed backend (suspend -> confirm -> spinner -> chip flips; reactivate -> spinner -> chip flips) and with unit tests.
