@@ -43,7 +43,12 @@ public static class AuthEndpoints
         var martCode = request.MartCode.Trim().ToUpperInvariant();
         var mart = await db.Marts.SingleOrDefaultAsync(m => m.Code == martCode);
 
-        if (mart is null || mart.Status == MartStatus.Suspended)
+        if (mart is not null && mart.Status == MartStatus.Suspended)
+        {
+            return MartSuspendedResult();
+        }
+
+        if (mart is null)
         {
             return Results.BadRequest(new { error = GenericError });
         }
@@ -87,8 +92,24 @@ public static class AuthEndpoints
         var martCode = request.MartCode.Trim().ToUpperInvariant();
         var mart = await db.Marts.SingleOrDefaultAsync(m => m.Code == martCode);
 
+        if (mart is not null && mart.Status == MartStatus.Suspended)
+        {
+            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
+            {
+                Id = Guid.NewGuid(),
+                OccurredAtUtc = DateTime.UtcNow,
+                Action = "UserSignInRefusedMartSuspended",
+                AttemptedEmail = request.Email,
+                AttemptedMartCode = martCode,
+                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
+            });
+            await db.SaveChangesAsync();
+            return MartSuspendedResult();
+        }
+
         User? user = null;
-        if (mart is not null && mart.Status != MartStatus.Suspended)
+        if (mart is not null)
         {
             user = await db.Users
                 .IgnoreQueryFilters()
@@ -180,6 +201,11 @@ public static class AuthEndpoints
             return Results.Unauthorized();
         }
 
+        if (mart.Status == MartStatus.Suspended)
+        {
+            return MartSuspendedResult();
+        }
+
         var role = await db.Roles.IgnoreQueryFilters().SingleAsync(r => r.Id == user.RoleId);
 
         return Results.Ok(new
@@ -192,6 +218,12 @@ public static class AuthEndpoints
             role = role.Name,
         });
     }
+
+    // Story 1.7 (FR-25): the one distinct message every refused login/API request for a
+    // suspended Mart should show, as opposed to a generic invalid-credentials/unauthorized
+    // response. 403, not 401 - the credentials/session are fine, the Mart itself is the reason.
+    private static IResult MartSuspendedResult() =>
+        Results.Json(new { error = "Mart suspended" }, statusCode: StatusCodes.Status403Forbidden);
 }
 
 public record ActivateUserRequest(string MartCode, string Email, string SetupCode, string Password);

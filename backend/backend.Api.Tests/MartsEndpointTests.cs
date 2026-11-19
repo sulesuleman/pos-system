@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using backend.Api.Infrastructure.Persistence;
 using backend.Api.Modules.Identity.Domain;
+using backend.Api.Modules.Tenancy.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
@@ -237,5 +238,149 @@ public class MartsEndpointTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var responseBody = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(responseBody.GetProperty("errors").TryGetProperty(field, out _));
+    }
+
+    private async Task<Guid> CreateMartAsync(HttpClient client, string martName)
+    {
+        var response = await client.PostAsJsonAsync("/api/v1/marts", ValidCreateMartBody(martName));
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        return Guid.Parse(body.GetProperty("martId").GetString()!);
+    }
+
+    [Fact]
+    public async Task SuspendMart_WithoutSession_ReturnsUnauthorized()
+    {
+        using var superAdminClient = await SignedInClientAsync();
+        var martId = await CreateMartAsync(superAdminClient, $"Mart {Guid.NewGuid():N}");
+        using var anonymousClient = _factory.CreateClient();
+
+        var response = await anonymousClient.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuspendMart_WhenSignedIn_SetsStatusToSuspended()
+    {
+        using var client = await SignedInClientAsync();
+        var martId = await CreateMartAsync(client, $"Mart {Guid.NewGuid():N}");
+
+        var response = await client.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("suspended", body.GetProperty("status").GetString());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var mart = await db.Marts.SingleAsync(m => m.Id == martId);
+        Assert.Equal(MartStatus.Suspended, mart.Status);
+    }
+
+    [Fact]
+    public async Task SuspendMart_AlreadySuspended_ReturnsBadRequest()
+    {
+        using var client = await SignedInClientAsync();
+        var martId = await CreateMartAsync(client, $"Mart {Guid.NewGuid():N}");
+        await client.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+
+        var response = await client.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuspendMart_UnknownId_ReturnsNotFound()
+    {
+        using var client = await SignedInClientAsync();
+
+        var response = await client.PostAsync($"/api/v1/marts/{Guid.NewGuid()}/suspend", content: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuspendMart_WritesPlatformAuditLogEntry()
+    {
+        using var client = await SignedInClientAsync();
+        var martId = await CreateMartAsync(client, $"Mart {Guid.NewGuid():N}");
+
+        await client.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var mart = await db.Marts.SingleAsync(m => m.Id == martId);
+        var entry = await db.PlatformAuditLogEntries.SingleAsync(e => e.Action == "MartSuspended" && e.AttemptedMartCode == mart.Code);
+        Assert.NotNull(entry.SuperAdminId);
+    }
+
+    [Fact]
+    public async Task ReactivateMart_WithoutSession_ReturnsUnauthorized()
+    {
+        using var superAdminClient = await SignedInClientAsync();
+        var martId = await CreateMartAsync(superAdminClient, $"Mart {Guid.NewGuid():N}");
+        await superAdminClient.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+        using var anonymousClient = _factory.CreateClient();
+
+        var response = await anonymousClient.PostAsync($"/api/v1/marts/{martId}/reactivate", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReactivateMart_WhenSuspended_SetsStatusBackToActive()
+    {
+        using var client = await SignedInClientAsync();
+        var martId = await CreateMartAsync(client, $"Mart {Guid.NewGuid():N}");
+        await client.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+
+        var response = await client.PostAsync($"/api/v1/marts/{martId}/reactivate", content: null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("active", body.GetProperty("status").GetString());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var mart = await db.Marts.SingleAsync(m => m.Id == martId);
+        Assert.Equal(MartStatus.Active, mart.Status);
+    }
+
+    [Fact]
+    public async Task ReactivateMart_AlreadyActive_ReturnsBadRequest()
+    {
+        using var client = await SignedInClientAsync();
+        var martId = await CreateMartAsync(client, $"Mart {Guid.NewGuid():N}");
+
+        var response = await client.PostAsync($"/api/v1/marts/{martId}/reactivate", content: null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReactivateMart_UnknownId_ReturnsNotFound()
+    {
+        using var client = await SignedInClientAsync();
+
+        var response = await client.PostAsync($"/api/v1/marts/{Guid.NewGuid()}/reactivate", content: null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReactivateMart_WritesPlatformAuditLogEntry()
+    {
+        using var client = await SignedInClientAsync();
+        var martId = await CreateMartAsync(client, $"Mart {Guid.NewGuid():N}");
+        await client.PostAsync($"/api/v1/marts/{martId}/suspend", content: null);
+
+        await client.PostAsync($"/api/v1/marts/{martId}/reactivate", content: null);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var mart = await db.Marts.SingleAsync(m => m.Id == martId);
+        var entry = await db.PlatformAuditLogEntries.SingleAsync(e => e.Action == "MartReactivated" && e.AttemptedMartCode == mart.Code);
+        Assert.NotNull(entry.SuperAdminId);
     }
 }

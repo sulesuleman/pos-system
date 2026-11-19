@@ -18,6 +18,8 @@ namespace backend.Api.Modules.Tenancy.Endpoints;
         {
             group.MapGet("/marts", GetMarts);
             group.MapPost("/marts", CreateMart);
+            group.MapPost("/marts/{id:guid}/suspend", SuspendMart);
+            group.MapPost("/marts/{id:guid}/reactivate", ReactivateMart);
         }
 
         private static async Task<IResult> GetMarts(AppDbContext db, HttpContext httpContext)
@@ -119,6 +121,85 @@ namespace backend.Api.Modules.Tenancy.Endpoints;
                     setupCode = setupCode.PlaintextCode,
                 },
                 statusCode: StatusCodes.Status201Created);
+        }
+
+        // Story 1.7 (FR-25). Suspend/reactivate are Super Admin-only, same session check as
+        // GetMarts/CreateMart. The actual request-refusal for the suspended Mart's own Users
+        // happens elsewhere (AuthEndpoints for a fresh sign-in/activate, and Program.cs's
+        // suspension-check middleware for every already-signed-in request) - this endpoint only
+        // flips the Mart's own status and records it.
+        private static async Task<IResult> SuspendMart(Guid id, AppDbContext db, HttpContext httpContext)
+        {
+            var superAdminIdValue = httpContext.Session.GetString("SuperAdminId");
+            if (superAdminIdValue is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var mart = await db.Marts.SingleOrDefaultAsync(m => m.Id == id);
+            if (mart is null)
+            {
+                return Results.NotFound();
+            }
+
+            if (mart.Status == MartStatus.Suspended)
+            {
+                return Results.BadRequest(new { error = "Mart is already suspended." });
+            }
+
+            mart.Status = MartStatus.Suspended;
+
+            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
+            {
+                Id = Guid.NewGuid(),
+                OccurredAtUtc = DateTime.UtcNow,
+                Action = "MartSuspended",
+                SuperAdminId = Guid.Parse(superAdminIdValue),
+                AttemptedMartCode = mart.Code,
+                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
+            });
+
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { id = mart.Id, name = mart.Name, code = mart.Code, status = mart.Status.ToString().ToLower() });
+        }
+
+        private static async Task<IResult> ReactivateMart(Guid id, AppDbContext db, HttpContext httpContext)
+        {
+            var superAdminIdValue = httpContext.Session.GetString("SuperAdminId");
+            if (superAdminIdValue is null)
+            {
+                return Results.Unauthorized();
+            }
+
+            var mart = await db.Marts.SingleOrDefaultAsync(m => m.Id == id);
+            if (mart is null)
+            {
+                return Results.NotFound();
+            }
+
+            if (mart.Status == MartStatus.Active)
+            {
+                return Results.BadRequest(new { error = "Mart is already active." });
+            }
+
+            mart.Status = MartStatus.Active;
+
+            db.PlatformAuditLogEntries.Add(new PlatformAuditLogEntry
+            {
+                Id = Guid.NewGuid(),
+                OccurredAtUtc = DateTime.UtcNow,
+                Action = "MartReactivated",
+                SuperAdminId = Guid.Parse(superAdminIdValue),
+                AttemptedMartCode = mart.Code,
+                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString(),
+                UserAgent = httpContext.Request.Headers.UserAgent.ToString(),
+            });
+
+            await db.SaveChangesAsync();
+
+            return Results.Ok(new { id = mart.Id, name = mart.Name, code = mart.Code, status = mart.Status.ToString().ToLower() });
         }
 
         private static Dictionary<string, string> Validate(CreateMartRequest request)

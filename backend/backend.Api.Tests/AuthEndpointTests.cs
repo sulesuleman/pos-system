@@ -238,7 +238,7 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Activate_AgainstSuspendedMart_ReturnsGenericBadRequest()
+    public async Task Activate_AgainstSuspendedMart_ReturnsMartSuspendedForbidden()
     {
         var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
         var (martCode, setupCode, martId) = await CreateMartAndOwnerAsync(ownerEmail);
@@ -249,7 +249,9 @@ public class AuthEndpointTests : IAsyncLifetime
             "/api/v1/auth/activate",
             new { martCode, email = ownerEmail, setupCode, password = OwnerPassword });
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Mart suspended", body.GetProperty("error").GetString());
     }
 
     private async Task ActivateAsync(string martCode, string email, string setupCode)
@@ -343,7 +345,7 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task SignIn_AgainstSuspendedMart_ReturnsUnauthorized()
+    public async Task SignIn_AgainstSuspendedMart_ReturnsMartSuspendedForbidden()
     {
         var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
         var (martCode, setupCode, martId) = await CreateMartAndOwnerAsync(ownerEmail);
@@ -355,7 +357,49 @@ public class AuthEndpointTests : IAsyncLifetime
             "/api/v1/auth/sign-in",
             new { martCode, email = ownerEmail, password = OwnerPassword });
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Mart suspended", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task SignedInUser_AfterMartIsSuspendedMidSession_IsRefusedOnNextRequest()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, setupCode, martId) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, setupCode);
+        using var client = _factory.CreateClient();
+        var signInResponse = await client.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+        Assert.Equal(HttpStatusCode.OK, signInResponse.StatusCode);
+
+        await SuspendMartAsync(martId);
+
+        var response = await client.GetAsync("/api/v1/auth/session");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Mart suspended", body.GetProperty("error").GetString());
+    }
+
+    [Fact]
+    public async Task SuspendingOneMart_DoesNotAffectSignInToAnotherMart()
+    {
+        var suspendedOwnerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var unaffectedOwnerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (suspendedMartCode, suspendedSetupCode, suspendedMartId) = await CreateMartAndOwnerAsync(suspendedOwnerEmail);
+        var (unaffectedMartCode, unaffectedSetupCode, _) = await CreateMartAndOwnerAsync(unaffectedOwnerEmail);
+        await ActivateAsync(suspendedMartCode, suspendedOwnerEmail, suspendedSetupCode);
+        await ActivateAsync(unaffectedMartCode, unaffectedOwnerEmail, unaffectedSetupCode);
+        await SuspendMartAsync(suspendedMartId);
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode = unaffectedMartCode, email = unaffectedOwnerEmail, password = OwnerPassword });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]

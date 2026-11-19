@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-13-2026 14:55
-last_updated: 11-18-2026 12:40
+last_updated: 11-19-2026 00:00
 project: POS-System
 project_key: NOKEY
 tracking_system: file-system
@@ -42,7 +42,7 @@ development_status:
   1-4-owner-activation-and-login: review
   1-5-mart-audit-log: review
   1-6-manage-branches: review
-  1-7-suspend-and-reactivate-a-mart: backlog
+  1-7-suspend-and-reactivate-a-mart: review
   1-8-hosting-deployment-and-backups: backlog
   epic-1-retrospective: optional
 

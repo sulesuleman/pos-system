@@ -3,6 +3,7 @@ using backend.Api.Modules.AuditLog.Endpoints;
 using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Endpoints;
 using backend.Api.Modules.Tenancy;
+using backend.Api.Modules.Tenancy.Domain;
 using backend.Api.Modules.Tenancy.Endpoints;
 using Microsoft.EntityFrameworkCore;
 
@@ -94,6 +95,29 @@ if (!app.Environment.IsDevelopment())
 app.UseCors(FrontendCorsPolicy);
 
 app.UseSession();
+
+// Story 1.7 (FR-25): a suspended Mart refuses every API request from its already-signed-in
+// Users "on next contact", not just a fresh sign-in - one choke point here instead of a repeated
+// check in every Mart-scoped endpoint. Super Admin sessions never set "MartId", so this never
+// touches /super-admin/* or /marts/* (the endpoints Super Admin uses to suspend/reactivate).
+app.Use(async (context, next) =>
+{
+    var martIdValue = context.Session.GetString("MartId");
+    if (martIdValue is not null && Guid.TryParse(martIdValue, out var martId))
+    {
+        var db = context.RequestServices.GetRequiredService<AppDbContext>();
+        var mart = await db.Marts.AsNoTracking().SingleOrDefaultAsync(m => m.Id == martId);
+        if (mart is null || mart.Status == MartStatus.Suspended)
+        {
+            context.Session.Clear();
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new { error = "Mart suspended" });
+            return;
+        }
+    }
+
+    await next();
+});
 
 app.Run();
 
