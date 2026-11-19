@@ -33,6 +33,16 @@ public static class StaffEndpoints
         var martId = currentUser.MartId;
 
         var errors = Validate(request);
+        if (request.RoleId == RoleIds.Owner)
+        {
+            errors["roleId"] = "Select a Role.";
+        }
+        else if (!await db.Roles.AnyAsync(r => r.Id == request.RoleId))
+        {
+            // The Role query filter already limits this to the global built-in Roles plus this
+            // Mart's own custom ones - no need to re-check MartId by hand.
+            errors["roleId"] = "Select a Role.";
+        }
         if (errors.Count > 0)
         {
             return Results.BadRequest(new { errors });
@@ -89,7 +99,7 @@ public static class StaffEndpoints
             Id = Guid.NewGuid(),
             MartId = martId,
             StaffId = staffId,
-            RoleId = RoleIds.Manager,
+            RoleId = request.RoleId,
             BranchId = branchId,
             FirstName = request.FirstName.Trim(),
             LastName = request.LastName.Trim(),
@@ -217,5 +227,5 @@ public static class StaffEndpoints
 
     private static string NormalizeCnic(string cnic) => cnic.Replace("-", string.Empty).Trim();
 
-    public record CreateStaffRequest(string FirstName, string LastName, string Email, string Contact, string Cnic, Guid? BranchId = null);
+    public record CreateStaffRequest(string FirstName, string LastName, string Email, string Contact, string Cnic, Guid RoleId, Guid? BranchId = null);
 }

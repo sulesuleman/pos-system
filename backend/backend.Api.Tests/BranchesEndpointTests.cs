@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using backend.Api.Infrastructure.Persistence;
+using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -84,7 +85,7 @@ public class BranchesEndpointTests : ApiTestFixtureBase
         var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
         var createResponse = await ownerClient.PostAsJsonAsync(
             "/api/v1/staff",
-            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1", branchId });
+            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager, branchId });
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var body = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
         var setupCode = body.GetProperty("setupCode").GetString()!;

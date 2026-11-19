@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using backend.Api.Infrastructure.Persistence;
+using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy.Domain;
 using Microsoft.AspNetCore.Identity;
@@ -419,7 +420,7 @@ public class AuthEndpointTests : ApiTestFixtureBase
 
         var response = await ownerClient.PostAsJsonAsync(
             "/api/v1/staff",
-            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1", branchId });
+            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager, branchId });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -544,7 +545,7 @@ public class AuthEndpointTests : ApiTestFixtureBase
 
         var response = await managerClient.PostAsJsonAsync(
             "/api/v1/staff",
-            new { firstName = "Another", lastName = "Manager", email = $"m2-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1" });
+            new { firstName = "Another", lastName = "Manager", email = $"m2-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
@@ -623,7 +624,7 @@ public class AuthEndpointTests : ApiTestFixtureBase
 
         var response = await ownerClient.PostAsJsonAsync(
             "/api/v1/staff",
-            new { firstName = "Manager", lastName = "Person", email = $"manager-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1" });
+            new { firstName = "Manager", lastName = "Person", email = $"manager-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -662,7 +663,7 @@ public class AuthEndpointTests : ApiTestFixtureBase
 
         var response = await ownerClient.PostAsJsonAsync(
             "/api/v1/staff",
-            new { firstName = "Manager", lastName = "Person", email = $"manager-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1", branchId = inactiveBranchId });
+            new { firstName = "Manager", lastName = "Person", email = $"manager-{Guid.NewGuid():N}@example.com", contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager, branchId = inactiveBranchId });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using backend.Api.Infrastructure.Persistence;
 using backend.Api.Modules.AuditLog.Domain;
+using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
 using backend.Api.Modules.Tenancy.Domain;
 using Microsoft.AspNetCore.Identity;
@@ -199,7 +200,7 @@ public class AuditLogEndpointTests : ApiTestFixtureBase
         var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
         var createStaffResponse = await ownerClient.PostAsJsonAsync(
             "/api/v1/staff",
-            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1", branchId });
+            new { firstName = "Manager", lastName = "Person", email = managerEmail, contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager, branchId });
         Assert.Equal(HttpStatusCode.Created, createStaffResponse.StatusCode);
         var staffBody = await createStaffResponse.Content.ReadFromJsonAsync<JsonElement>();
         var managerSetupCode = staffBody.GetProperty("setupCode").GetString()!;

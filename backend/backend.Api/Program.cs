@@ -72,6 +72,7 @@ v1.MapGet("/health", () => Results.Ok(new {status = "ok" }));
 v1.MapSuperAdminAuthEndpoints();
 v1.MapAuthEndpoints();
 v1.MapStaffEndpoints();
+v1.MapRoleEndpoints();
 v1.MapMartsEndpoints();
 v1.MapAuditLogEndpoints();
 v1.MapBranchesEndpoints();
