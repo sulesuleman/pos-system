@@ -82,8 +82,11 @@ export function Sidebar({
     <Box sx={[styles.root, isDrawerForm && { width: '100%', height: '100%' }]}>
       <Box sx={styles.brandRow}>
         <Logo />
+        {/* The reference's own equivalent label here (CompanySelector's company name) renders
+            at its row's plain text weight (500), never bold - matched here rather than the
+            700 this had drifted to. */}
         {!collapsed && (
-          <Typography variant="h6" noWrap sx={{ fontWeight: 700, flex: 1, minWidth: 0 }}>
+          <Typography variant="h6" noWrap sx={{ fontWeight: 500, flex: 1, minWidth: 0 }}>
             POS System
           </Typography>
         )}
@@ -122,8 +125,11 @@ export function Sidebar({
             const link = (
               <Box key={item.path} component={Link} to={item.path} onClick={onNavigate} sx={styles.navItem(active)}>
                 {item.icon}
+                {/* Constant weight 500 whether active or not - same as the reference's own
+                    `navItemText` (its SidebarNavItem never bolds the active row, only its
+                    colour changes). */}
                 {!collapsed && (
-                  <Typography variant="body2" noWrap sx={{ fontWeight: active ? 600 : 500 }}>
+                  <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
                     {item.label}
                   </Typography>
                 )}

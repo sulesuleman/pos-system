@@ -40,9 +40,12 @@ export function usePhoneBottomNavStyles() {
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
     },
+    // The reference's own selected state: `primary.darkOrLight` (dark in light mode, light in
+    // dark mode - for contrast against the paper surface either way), not a flat `primary.main`;
+    // its label only steps up to weight 500 (from caption's own 400), not 600.
     '&.Mui-selected': {
-      color: 'primary.main',
-      '& .MuiBottomNavigationAction-label': { fontWeight: 600 },
+      color: theme.palette.primary.darkOrLight,
+      '& .MuiBottomNavigationAction-label': { fontWeight: 500 },
     },
     '&.Mui-focusVisible': {
       outline: `2px solid ${theme.palette.primary.main}`,

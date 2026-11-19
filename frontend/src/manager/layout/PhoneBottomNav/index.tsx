@@ -22,8 +22,19 @@ export function PhoneBottomNav({ items, moreOpen, onMore }: PhoneBottomNavProps)
   const location = useLocation()
   const navigate = useNavigate()
 
-  const current = items.find((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`))
-  const value = moreOpen ? 'more' : (current?.path ?? false)
+  // Same longest-match-wins rule as Sidebar's own activeItemPath: with sibling items sharing a
+  // path prefix (e.g. Home at "/owner" and Branches at "/owner/branches"), the first item whose
+  // path is merely a prefix of the current one would otherwise win over the more specific match
+  // further down the list - "/owner/branches" starts with "/owner/" too, so a plain `.find()``
+  // marked Home active on the Branches screen.
+  const currentPath = items.reduce<string | null>((bestPath, item) => {
+    const matches = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+    if (!matches) {
+      return bestPath
+    }
+    return bestPath === null || item.path.length > bestPath.length ? item.path : bestPath
+  }, null)
+  const value = moreOpen ? 'more' : (currentPath ?? false)
 
   return (
     <BottomNavigation component="nav" aria-label="Main navigation" showLabels value={value} sx={styles.root}>
@@ -33,7 +44,7 @@ export function PhoneBottomNav({ items, moreOpen, onMore }: PhoneBottomNavProps)
           value={item.path}
           label={item.label}
           icon={item.icon}
-          aria-current={current?.path === item.path ? 'page' : undefined}
+          aria-current={currentPath === item.path ? 'page' : undefined}
           onClick={() => navigate(item.path)}
           sx={styles.item}
         />
