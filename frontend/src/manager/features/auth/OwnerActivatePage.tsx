@@ -112,7 +112,13 @@ export function OwnerActivatePage() {
       setFieldErrors({ password: result.message })
       return
     }
-    setServerError(result.reason === 'invalid' ? GENERIC_ACTIVATE_ERROR : GENERIC_SERVER_ERROR)
+    if (result.reason === 'invalid') {
+      setServerError(GENERIC_ACTIVATE_ERROR)
+    } else if (result.reason === 'mart-suspended') {
+      setServerError(result.message)
+    } else {
+      setServerError(GENERIC_SERVER_ERROR)
+    }
   }
 
   return (

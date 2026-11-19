@@ -222,8 +222,12 @@ public static class AuthEndpoints
     // Story 1.7 (FR-25): the one distinct message every refused login/API request for a
     // suspended Mart should show, as opposed to a generic invalid-credentials/unauthorized
     // response. 403, not 401 - the credentials/session are fine, the Mart itself is the reason.
+    // The full user-facing sentence is sent from here (not a terse code the frontend maps
+    // itself) so there is exactly one place that owns this wording.
     private static IResult MartSuspendedResult() =>
-        Results.Json(new { error = "Mart suspended" }, statusCode: StatusCodes.Status403Forbidden);
+        Results.Json(
+            new { error = "This Mart has been suspended. Contact the platform administrator for help." },
+            statusCode: StatusCodes.Status403Forbidden);
 }
 
 public record ActivateUserRequest(string MartCode, string Email, string SetupCode, string Password);

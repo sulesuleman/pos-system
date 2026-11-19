@@ -111,7 +111,11 @@ app.Use(async (context, next) =>
         {
             context.Session.Clear();
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
-            await context.Response.WriteAsJsonAsync(new { error = "Mart suspended" });
+            // Same full user-facing sentence as AuthEndpoints.MartSuspendedResult (Story 1.7/FR-25) -
+            // kept in sync manually, same as that one already was, since this middleware can't
+            // reach that class's private helper.
+            await context.Response.WriteAsJsonAsync(
+                new { error = "This Mart has been suspended. Contact the platform administrator for help." });
             return;
         }
     }

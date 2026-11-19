@@ -251,7 +251,7 @@ public class AuthEndpointTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Mart suspended", body.GetProperty("error").GetString());
+        Assert.Equal("This Mart has been suspended. Contact the platform administrator for help.", body.GetProperty("error").GetString());
     }
 
     private async Task ActivateAsync(string martCode, string email, string setupCode)
@@ -359,7 +359,7 @@ public class AuthEndpointTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Mart suspended", body.GetProperty("error").GetString());
+        Assert.Equal("This Mart has been suspended. Contact the platform administrator for help.", body.GetProperty("error").GetString());
     }
 
     [Fact]
@@ -380,7 +380,7 @@ public class AuthEndpointTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Mart suspended", body.GetProperty("error").GetString());
+        Assert.Equal("This Mart has been suspended. Contact the platform administrator for help.", body.GetProperty("error").GetString());
     }
 
     [Fact]

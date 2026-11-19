@@ -43,7 +43,7 @@ describe('OwnerSignInPage', () => {
   })
 
   it('renders the sign-in form once no session is found', async () => {
-    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
 
     renderSignIn()
 
@@ -51,7 +51,7 @@ describe('OwnerSignInPage', () => {
   })
 
   it('navigates to /owner on correct credentials', async () => {
-    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
     vi.spyOn(ownerAuth, 'signIn').mockResolvedValue({ ok: true, owner: OWNER })
 
     renderSignIn()
@@ -62,7 +62,7 @@ describe('OwnerSignInPage', () => {
   })
 
   it('shows a generic message and stays on sign-in for wrong credentials', async () => {
-    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
     vi.spyOn(ownerAuth, 'signIn').mockResolvedValue({ ok: false, reason: 'invalid-credentials' })
 
     renderSignIn()
@@ -74,7 +74,7 @@ describe('OwnerSignInPage', () => {
   })
 
   it('shows a generic message and stays on sign-in for a network/API error', async () => {
-    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
     vi.spyOn(ownerAuth, 'signIn').mockResolvedValue({ ok: false, reason: 'error' })
 
     renderSignIn()
@@ -86,8 +86,33 @@ describe('OwnerSignInPage', () => {
     })
   })
 
+  it("shows the backend's own Mart-suspended message verbatim, not a generic/hardcoded one", async () => {
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
+    vi.spyOn(ownerAuth, 'signIn').mockResolvedValue({
+      ok: false,
+      reason: 'mart-suspended',
+      message: "This Mart's own backend-provided suspension message.",
+    })
+
+    renderSignIn()
+    await screen.findByLabelText(/Mart code/)
+    fillAndSubmit('ABC123', 'ayesha@example.com', 'correct-password')
+
+    expect(await screen.findByRole('alert')).toHaveTextContent("This Mart's own backend-provided suspension message.")
+  })
+
+  it("shows the backend's own Mart-suspended message when RequireOwnerSession bounces a signed-in Owner back here", async () => {
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
+
+    renderSignIn([
+      { pathname: '/auth/sign-in', state: { martSuspendedMessage: 'Bounced-back backend message.' } },
+    ])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Bounced-back backend message.')
+  })
+
   it('shows the activation banner when navigated here right after activating', async () => {
-    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
 
     renderSignIn([{ pathname: '/auth/sign-in', state: { activated: true } }])
 
@@ -97,7 +122,7 @@ describe('OwnerSignInPage', () => {
   })
 
   it('does not show the activation banner on a plain visit', async () => {
-    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
 
     renderSignIn()
     await screen.findByLabelText(/Mart code/)
@@ -106,7 +131,7 @@ describe('OwnerSignInPage', () => {
   })
 
   it('links to the activation screen for a first-time Owner', async () => {
-    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false })
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
 
     renderSignIn()
     await screen.findByLabelText(/Mart code/)

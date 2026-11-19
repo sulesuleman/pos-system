@@ -98,6 +98,22 @@ describe('OwnerActivatePage', () => {
     expect(await screen.findByText('server-specific password message')).toBeInTheDocument()
   })
 
+  it("shows the backend's own Mart-suspended message verbatim, not a generic/hardcoded one", async () => {
+    vi.spyOn(ownerAuth, 'activate').mockResolvedValue({
+      ok: false,
+      reason: 'mart-suspended',
+      message: "This Mart's own backend-provided suspension message.",
+    })
+
+    renderActivate()
+    fillForm()
+    fireEvent.click(screen.getByRole('button', { name: 'Activate account' }))
+
+    expect(await screen.findByTestId('owner-activate-error')).toHaveTextContent(
+      "This Mart's own backend-provided suspension message.",
+    )
+  })
+
   it('shows a generic server-error banner on an unexpected failure', async () => {
     vi.spyOn(ownerAuth, 'activate').mockResolvedValue({ ok: false, reason: 'error' })
 

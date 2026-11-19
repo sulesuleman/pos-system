@@ -23,7 +23,14 @@ export function OwnerSignInPage() {
   const [martCode, setMartCode] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  // Seeded once, right after RequireOwnerSession bounces a signed-in Owner back here because
+  // their Mart was suspended mid-session (Story 1.7/FR-25) - same one-shot redirect-state
+  // pattern as justActivated below, so a reload (which drops location.state) clears it rather
+  // than it reappearing on every visit. The message itself is the backend's own wording, carried
+  // through via state - never hardcoded here.
+  const [error, setError] = useState<string | null>(
+    () => (location.state as { martSuspendedMessage?: string } | null)?.martSuspendedMessage ?? null,
+  )
   const [submitting, setSubmitting] = useState(false)
 
   // Shown once, right after activation redirects here - not persisted, so a reload clears it.
@@ -58,7 +65,13 @@ export function OwnerSignInPage() {
       return
     }
     setPassword('')
-    setError(result.reason === 'invalid-credentials' ? GENERIC_CREDENTIALS_ERROR : GENERIC_SERVER_ERROR)
+    if (result.reason === 'invalid-credentials') {
+      setError(GENERIC_CREDENTIALS_ERROR)
+    } else if (result.reason === 'mart-suspended') {
+      setError(result.message)
+    } else {
+      setError(GENERIC_SERVER_ERROR)
+    }
   }
 
   if (checkingSession) {
