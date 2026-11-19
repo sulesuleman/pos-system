@@ -62,6 +62,14 @@ describe('RequireOwnerSession', () => {
     expect(await screen.findByText('owner sign-in page')).toBeInTheDocument()
   })
 
+  it('redirects to /auth/sign-in when a valid session is signed in as a different Role (a Manager hitting /owner directly)', async () => {
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: true, owner: { ...OWNER, role: 'Manager' } })
+
+    renderGuarded()
+
+    expect(await screen.findByText('owner sign-in page')).toBeInTheDocument()
+  })
+
   it("redirects to /auth/sign-in carrying the backend's own Mart-suspended message when the Mart was suspended mid-session", async () => {
     vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({
       ok: false,

@@ -13,6 +13,7 @@ function renderSignIn(initialEntries: Array<string | { pathname: string; state?:
           <Route path="/auth/sign-in" element={<OwnerSignInPage />} />
           <Route path="/auth/activate" element={<div>activate page</div>} />
           <Route path="/owner" element={<div>owner area</div>} />
+          <Route path="/manager" element={<div>manager area</div>} />
         </Routes>
       </MemoryRouter>
     </AppThemeProvider>,
@@ -59,6 +60,25 @@ describe('OwnerSignInPage', () => {
     fillAndSubmit('ABC123', 'ayesha@example.com', 'correct-password')
 
     expect(await screen.findByText('owner area')).toBeInTheDocument()
+  })
+
+  it('navigates to /manager instead of /owner when the signed-in User is a Manager', async () => {
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: false, reason: 'error' })
+    vi.spyOn(ownerAuth, 'signIn').mockResolvedValue({ ok: true, owner: { ...OWNER, role: 'Manager' } })
+
+    renderSignIn()
+    await screen.findByLabelText(/Mart code/)
+    fillAndSubmit('ABC123', 'bilal@example.com', 'correct-password')
+
+    expect(await screen.findByText('manager area')).toBeInTheDocument()
+  })
+
+  it('redirects an already-authenticated Manager to /manager, not /owner', async () => {
+    vi.spyOn(ownerAuth, 'getSession').mockResolvedValue({ ok: true, owner: { ...OWNER, role: 'Manager' } })
+
+    renderSignIn()
+
+    expect(await screen.findByText('manager area')).toBeInTheDocument()
   })
 
   it('shows a generic message and stays on sign-in for wrong credentials', async () => {

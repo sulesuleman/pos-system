@@ -15,6 +15,14 @@ import { getSession, signIn } from '../../../shared/api/ownerAuth'
 const GENERIC_CREDENTIALS_ERROR = "That Mart code, email or password isn't right."
 const GENERIC_SERVER_ERROR = 'Something went wrong. Try again.'
 
+// Where a signed-in User lands depends on their Role (AD-15: Owner and Manager share this one
+// sign-in screen and the same /auth/* endpoints) - everything other than "Manager" lands on
+// /owner, which today just means "Owner" (the only other Role that can sign in here; Cashier
+// uses its own Staff ID + PIN flow, not this screen).
+function landingPathForRole(role: string): string {
+  return role === 'Manager' ? '/manager' : '/owner'
+}
+
 export function OwnerSignInPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -44,7 +52,7 @@ export function OwnerSignInPage() {
         return
       }
       if (result.ok) {
-        navigate('/owner', { replace: true })
+        navigate(landingPathForRole(result.owner.role), { replace: true })
         return
       }
       setCheckingSession(false)
@@ -61,7 +69,7 @@ export function OwnerSignInPage() {
     const result = await signIn(martCode.trim(), email.trim(), password)
     setSubmitting(false)
     if (result.ok) {
-      navigate('/owner', { replace: true })
+      navigate(landingPathForRole(result.owner.role), { replace: true })
       return
     }
     setPassword('')

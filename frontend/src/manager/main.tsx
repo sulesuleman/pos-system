@@ -13,12 +13,18 @@ import { SuperAdminArea } from './features/super-admin/SuperAdminArea'
 import { OwnerArea } from './features/owner/OwnerArea'
 import { BranchesPage } from './features/owner/branches/BranchesPage'
 import { BranchSelector } from './features/owner/branches/BranchSelector'
+import { StaffPage } from './features/owner/staff/StaffPage'
+import { RolesPage } from './features/owner/roles/RolesPage'
+import { ManagerArea } from './features/manager/ManagerArea'
 import { RequireSession } from './features/auth/RequireSession'
 import { RequireOwnerSession } from './features/auth/RequireOwnerSession'
-import { SUPER_ADMIN_NAV_ITEMS, OWNER_NAV_ITEMS } from './layout/navConfig'
+import { RequireManagerSession } from './features/auth/RequireManagerSession'
+import { SUPER_ADMIN_NAV_ITEMS, OWNER_NAV_ITEMS, MANAGER_NAV_ITEMS } from './layout/navConfig'
 
-// Owner's sign-in response already carries firstName/lastName/role - the sidebar's identity row
-// just needs it reshaped, not a second API call.
+// Owner's and Manager's sign-in response both already carry firstName/lastName/role (AD-15:
+// shared /auth/* endpoints for both Roles) - the sidebar's identity row just needs it reshaped,
+// not a second API call. Reused for both ManagerShell instances below, not duplicated as
+// getManagerUserDisplay, since the shape and the call are identical either way.
 async function getOwnerUserDisplay(): Promise<SidebarUserDisplay | null> {
   const result = await getOwnerSession()
   if (!result.ok) {
@@ -96,6 +102,44 @@ createRoot(document.getElementById('root')!).render(
                 <RequireOwnerSession>
                   <BranchesPage />
                 </RequireOwnerSession>
+              }
+            />
+            <Route
+              path="/owner/staff"
+              element={
+                <RequireOwnerSession>
+                  <StaffPage />
+                </RequireOwnerSession>
+              }
+            />
+            <Route
+              path="/owner/roles"
+              element={
+                <RequireOwnerSession>
+                  <RolesPage />
+                </RequireOwnerSession>
+              }
+            />
+          </Route>
+          {/* Manager (Epic 2 minimal slice, AD-15): signs in through the identical /auth/*
+              endpoints as the Owner above, just a different Role and landing area/nav - see
+              OwnerSignInPage's role-based redirect after sign-in. */}
+          <Route
+            element={
+              <ManagerShell
+                navItems={MANAGER_NAV_ITEMS}
+                onSignOut={signOutOwner}
+                signOutRedirectPath="/auth/sign-in"
+                getUserDisplay={getOwnerUserDisplay}
+              />
+            }
+          >
+            <Route
+              path="/manager"
+              element={
+                <RequireManagerSession>
+                  <ManagerArea />
+                </RequireManagerSession>
               }
             />
           </Route>
