@@ -15,19 +15,39 @@ Owner: Suleman (learning .NET). Claude tracks this list and explains each step o
 - `BranchesEndpoints.EditBranch` already restricts a non-Owner editor to their own `BranchId`.
 - `RolesEndpoints`/`PermissionsEndpoints` (added alongside the Epic 2 frontend) — **confirm their own Permission check now**; they were built for the Owner-driven Roles screen and may still be Owner-only by assumption rather than checked against `manage staff and Roles` explicitly.
 
+## Audit (done 2026-11-20)
+
+Read every endpoint file in `backend.Api` (`AuthEndpoints`, `RoleEndpoints`, `StaffEndpoints`, `SuperAdminAuthEndpoints`, `BranchesEndpoints`, `MartsEndpoints`, `MartSettingsEndpoints`, `AuditLogEndpoints`) and classified each route's authorization:
+
+| Endpoint | Check | Verdict |
+|---|---|---|
+| `GET/POST /roles`, `PUT /roles/{id}`, `GET /permissions` | `UserAuthorization.HasPermissionAsync(..., ManageStaffAndRoles)` | OK |
+| `POST/GET /staff` | same Permission check | OK (see gap below on `GET /staff`) |
+| `GET /branches` | no Permission needed (read-only); already filters `WHERE b.Id == user.BranchId` when `BranchId != null` | OK, Branch-scoped |
+| `PUT /branches/{id}` | `HasPermissionAsync(..., ManageBranchesAndDevices)` **and** `user.BranchId == id` | OK, Branch-scoped |
+| `POST /branches`, `POST /branches/{id}/deactivate` | explicit `user.RoleId == RoleIds.Owner` (no Permission grants these to anyone else — matches `epics.md`'s "Create/deactivate are Owner-only") | OK, correctly Owner-only |
+| `GET/PUT /mart-settings` | explicit Owner-only (Mart-wide, no Branch exception — correct, nothing Branch-scoped should edit currency/timezone/Mart settings) | OK |
+| `GET /audit-log` | `HasPermissionAsync(..., ViewAuditLog)` | OK (Mart-wide by design, no Branch split - Audit Log isn't Branch data) |
+| `/auth/*`, `/marts/*`, `/super-admin/*` | pre-session (activate/sign-in) or Super Admin session, not a `User`/`RolePermissions` case at all | out of scope for this story |
+
+**Result: only one real gap**, not the wide rewrite originally expected.
+
+### The gap: `GET /staff` isn't Branch-scoped
+
+`StaffEndpoints.GetStaff` checks the `manage staff and Roles` Permission but returns **every** `User` in the Mart regardless of the caller's own `BranchId`. A Branch-scoped Manager holding that Permission (AD-16 seeds Manager with every Permission except `view dashboard`) can list every other Branch's staff too — the exact case Story 2.4's AC #2 ("a user assigned only to Branch X ... requests data ... for Branch Y ... refused") covers. `BranchesEndpoints.GetBranches` already got this right (`if (user.BranchId is not null) query = query.Where(b => b.Id == user.BranchId)`) - `GetStaff` needs the same shape, filtering on `u.BranchId == user.BranchId` when the caller isn't the Owner. Confirmed no test exercises this today (`AuthEndpointTests.cs`'s staff tests are all Owner-signed-in or permission-less-Role-refused; nothing signs in as a Branch-scoped Manager and calls `GET /staff`).
+
+No other gap found - every other endpoint is already either correctly Permission-checked, correctly Branch-scoped, correctly Owner-only by design, or out of this story's scope.
+
 ## Open decisions (resolve before starting)
 
-1. **Audit pass first.** Before writing new checks, grep every `MapGet`/`MapPost`/`MapPut` in `backend.Api` for ones with no `UserAuthorization` call and no explicit Owner-only check — build the actual gap list instead of guessing which endpoints need this.
-2. **AC "holds a Permission in some but not all active Branches" is currently unreachable** (one `BranchId` per User, AD-16) — confirm we note this as "not yet applicable, will matter once Epic 3+ Mart-wide entities like Products exist" rather than building dead code for it now.
-3. **Test matrix shape** — one parameterized test per (endpoint, Permission) pair, or a smaller set of representative endpoints covering every Permission at least once? Recommend the latter to start (every Permission exercised once, not every endpoint × every Permission), given how few Permission-gated endpoints exist today.
+1. **AC "holds a Permission in some but not all active Branches" is currently unreachable** (one `BranchId` per User, AD-16) — note it as "not yet applicable, will matter once Epic 3+ Mart-wide entities like Products exist" rather than building dead code for it now.
+2. **Test matrix shape** — given the audit found only one real gap, the "each of the 14 Permissions refused/allowed" AC is largely already covered by the existing per-feature tests (`RoleEndpointTests`, `StaffEndpoint`-related tests in `AuthEndpointTests.cs`, `BranchesEndpointTests`, `AuditLogEndpointTests` each already assert their own Permission's refuse/allow case). Recommend treating this AC as satisfied by that existing coverage plus the new Branch-scoping test below, rather than writing a redundant parameterized matrix.
 
-## Tasks (not started)
+## Tasks
 
-- [ ] Audit: list every non-Owner-only endpoint and whether it already calls `UserAuthorization`.
-- [ ] Add the missing Permission checks found by the audit (likely just `RolesEndpoints`/`PermissionsEndpoints`, per the note above).
-- [ ] Add Branch-scoping checks anywhere a request can read/act on a specific Branch's data besides `BranchesEndpoints.EditBranch` (re-check `StaffEndpoints` — can a Branch-scoped Manager list/create staff outside their own Branch today?).
-- [ ] Test matrix: each of the 14 Permissions refused without it, allowed with it, against at least one real endpoint; Branch-mismatch refusal test; Owner-bypass-works-everywhere test (already partly covered by existing tests — confirm, don't duplicate).
-- [ ] Re-run full suite, confirm no regression in existing `StaffEndpointTests`/`BranchesEndpointTests`/`RolesEndpointTests`.
+- [ ] Fix `StaffEndpoints.GetStaff`: scope the query to `u.BranchId == currentUser.BranchId` when `currentUser.BranchId is not null` (Owner, `BranchId == null`, keeps seeing everyone) — same shape as `BranchesEndpoints.GetBranches`.
+- [ ] New test: a Branch-scoped Manager with `manage staff and Roles` calls `GET /staff` and sees only their own Branch's staff (plus, decide: should the Owner's own row ever show to a Branch-scoped Manager, given the Owner has no `BranchId`? Recommend excluding it, consistent with "only their own Branch's data").
+- [ ] Re-run full suite, confirm no regression in `AuthEndpointTests`/`BranchesEndpointTests`/`RoleEndpointTests`/`TenantIsolationTests`.
 
 ## Notes
 
