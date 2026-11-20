@@ -83,6 +83,7 @@ export const MartsList = forwardRef<MartsListHandle, MartsListProps>(function Ma
       flex: 0.75,
       renderCell: (params) => (
         <Chip
+          variant="soft"
           size="small"
           label={params.row.status === 'active' ? 'Active' : 'Suspended'}
           color={params.row.status === 'active' ? 'success' : 'default'}

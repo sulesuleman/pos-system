@@ -78,6 +78,7 @@ export const BranchesList = forwardRef<BranchesListHandle, BranchesListProps>(fu
       flex: 0.75,
       renderCell: (params) => (
         <Chip
+          variant="soft"
           size="small"
           label={params.row.isActive ? 'Active' : 'Deactivated'}
           color={params.row.isActive ? 'success' : 'default'}

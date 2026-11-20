@@ -1,11 +1,10 @@
 import { useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
-import Typography from '@mui/material/Typography'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { StyledButton } from '../../../../shared/common/Buttons/StyledButton'
 import { usePageHeader } from '../../../layout/pageHeaderStore'
-import { StyledDialog } from '../../../../shared/common/Dialog'
+import { ConfirmationDialog } from '../../../../shared/common/Dialog/ConfirmationDialog'
 import { BranchesList, type BranchesListHandle } from './BranchesList'
 import { BranchFormDialog } from './BranchFormDialog'
 import { MartSettingsDialog } from './MartSettingsDialog'
@@ -107,25 +106,21 @@ export function BranchesPage() {
         onSaved={handleEditSaved}
       />
 
-      <StyledDialog
+      <ConfirmationDialog
         isOpen={deactivatingBranch !== null}
         onClose={() => (deactivating ? undefined : setDeactivatingBranch(null))}
-        onSubmit={() => void handleConfirmDeactivate()}
-        title="Deactivate Branch"
-        maxWidth="phoneSm"
+        onConfirm={() => void handleConfirmDeactivate()}
         loading={deactivating}
-        confirmText="Deactivate"
-      >
-        <Typography variant="body2">
-          {deactivatingBranch?.name} will no longer be able to sell. Its history stays visible to you, and this
-          cannot be undone from here.
-        </Typography>
-        {deactivateError !== null && (
-          <Typography role="alert" color="error" variant="body2" sx={{ mt: 1.5 }}>
-            {deactivateError}
-          </Typography>
-        )}
-      </StyledDialog>
+        variant="discard"
+        confirmButtonText="Deactivate"
+        customMessage={
+          <>
+            {deactivatingBranch?.name} will no longer be able to sell. Its history stays visible to you, and this
+            cannot be undone from here.
+          </>
+        }
+        errorMessage={deactivateError}
+      />
 
       <MartSettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </Box>

@@ -3,7 +3,7 @@ import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined'
 import { StyledButton } from '../../../shared/common/Buttons/StyledButton'
-import { StyledDialog } from '../../../shared/common/Dialog'
+import { ConfirmationDialog } from '../../../shared/common/Dialog/ConfirmationDialog'
 import { usePageHeader } from '../../layout/pageHeaderStore'
 import { suspendMart, reactivateMart, type Mart } from '../../../shared/api/marts'
 import { MartsList, type MartsListHandle } from './MartsList'
@@ -102,25 +102,21 @@ export function SuperAdminArea() {
 
       <CreateMartDialog open={dialogOpen} onClose={() => setDialogOpen(false)} onCreated={handleCreated} />
 
-      <StyledDialog
+      <ConfirmationDialog
         isOpen={suspendingMart !== null}
         onClose={() => (suspending ? undefined : setSuspendingMart(null))}
-        onSubmit={() => void handleConfirmSuspend()}
-        title="Suspend Mart"
-        maxWidth="phoneSm"
+        onConfirm={() => void handleConfirmSuspend()}
         loading={suspending}
-        confirmText="Suspend"
-      >
-        <Typography variant="body2">
-          {suspendingMart?.name} and its staff will no longer be able to sign in until reactivated. This can be
-          undone at any time.
-        </Typography>
-        {suspendError !== null && (
-          <Typography role="alert" color="error" variant="body2" sx={{ mt: 1.5 }}>
-            {suspendError}
-          </Typography>
-        )}
-      </StyledDialog>
+        variant="discard"
+        confirmButtonText="Suspend"
+        customMessage={
+          <>
+            {suspendingMart?.name} and its staff will no longer be able to sign in until reactivated. This can be
+            undone at any time.
+          </>
+        }
+        errorMessage={suspendError}
+      />
     </Box>
   )
 }

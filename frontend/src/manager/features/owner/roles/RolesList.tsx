@@ -72,7 +72,12 @@ export const RolesList = forwardRef<RolesListHandle, RolesListProps>(function Ro
       headerName: 'Type',
       flex: 0.75,
       renderCell: (params) => (
-        <Chip size="small" label={params.row.isSystemDefault ? 'Built-in' : 'Custom'} color={params.row.isSystemDefault ? 'default' : 'primary'} />
+        <Chip
+          variant="filled"
+          size="small"
+          label={params.row.isSystemDefault ? 'Built-in' : 'Custom'}
+          color={params.row.isSystemDefault ? 'default' : 'primary'}
+        />
       ),
     },
     {
@@ -80,7 +85,9 @@ export const RolesList = forwardRef<RolesListHandle, RolesListProps>(function Ro
       headerName: 'Permissions',
       flex: 0.75,
       valueGetter: (_, row) => row.permissionIds.length,
-      renderCell: (params) => `${params.row.permissionIds.length} of 14`,
+      renderCell: (params) => (
+        <Chip variant="soft" size="small" color="default" label={`${params.row.permissionIds.length} of 14`} />
+      ),
     },
     {
       field: 'actions',

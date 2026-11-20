@@ -84,6 +84,7 @@ export const StaffList = forwardRef<StaffListHandle>(function StaffList(_props, 
       flex: 0.6,
       renderCell: (params) => (
         <Chip
+          variant="soft"
           size="small"
           label={params.row.active ? 'Active' : 'Pending activation'}
           color={params.row.active ? 'success' : 'default'}

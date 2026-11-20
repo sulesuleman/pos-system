@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import Box from '@mui/material/Box'
-import Checkbox from '@mui/material/Checkbox'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import Skeleton from '@mui/material/Skeleton'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
+import { StyledCheckbox } from '../../../../shared/common/Checkbox'
 import { StyledDialog } from '../../../../shared/common/Dialog'
 import { InputField } from '../../../../shared/common/Inputs/InputField'
+import { ValidationMessage } from '../../../../shared/common/Inputs/ValidationMessage'
 import { listPermissions, type Permission, type RoleFieldErrors } from '../../../../shared/api/roles'
 
 const GENERIC_SAVE_ERROR = 'Something went wrong. Try again.'
@@ -198,25 +198,17 @@ export function RoleFormDialog({ open, title, confirmText, initialValues, forkNo
           ) : (
             <FormGroup>
               {permissions.map((permission) => (
-                <FormControlLabel
+                <StyledCheckbox
                   key={permission.id}
-                  control={
-                    <Checkbox
-                      checked={form.permissionIds.includes(permission.id)}
-                      onChange={() => togglePermission(permission.id)}
-                    />
-                  }
+                  checked={form.permissionIds.includes(permission.id)}
+                  onChange={() => togglePermission(permission.id)}
                   label={permission.name}
-                  sx={{ textTransform: 'capitalize' }}
+                  wrapperSx={{ textTransform: 'capitalize' }}
                 />
               ))}
             </FormGroup>
           )}
-          {fieldErrors.permissionIds !== undefined && (
-            <Typography color="error" variant="caption">
-              {fieldErrors.permissionIds}
-            </Typography>
-          )}
+          <ValidationMessage error={fieldErrors.permissionIds} />
         </Stack>
         {serverError !== null && (
           <Typography role="alert" color="error" variant="body2">
