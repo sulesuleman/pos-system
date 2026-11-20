@@ -147,7 +147,16 @@ public static class StaffEndpoints
         // No IgnoreQueryFilters() anywhere in this composed query: calling it on one side of a
         // Join disables EF Core's tenant filter for the WHOLE query, not just that side -
         // confirmed root cause of a real cross-Mart leak here, fixed 2026-11-18 (see git history).
-        var staff = await db.Users
+        var usersQuery = db.Users.AsQueryable();
+        if (currentUser.BranchId is not null)
+        {
+            // Branch-scoped caller (e.g. a Manager): only their own Branch's staff, same AD-16
+            // rule BranchesEndpoints.GetBranches already applies. The Owner (BranchId == null)
+            // still sees everyone.
+            usersQuery = usersQuery.Where(u => u.BranchId == currentUser.BranchId);
+        }
+
+        var staff = await usersQuery
             .Join(db.Roles, u => u.RoleId, r => r.Id, (u, r) => new { u, RoleName = r.Name })
             .GroupJoin(db.Branches, x => x.u.BranchId, b => (Guid?)b.Id, (x, branches) => new { x.u, x.RoleName, branches })
             .SelectMany(x => x.branches.DefaultIfEmpty(), (x, branch) => new

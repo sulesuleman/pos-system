@@ -715,4 +715,42 @@ public class AuthEndpointTests : ApiTestFixtureBase
         Assert.Contains(entries, e => e.GetProperty("email").GetString() == managerEmail && e.GetProperty("role").GetString() == "Manager");
         Assert.Contains(entries, e => e.GetProperty("email").GetString() == ownerEmail && e.GetProperty("role").GetString() == "Owner");
     }
+
+    // Story 2.4 (AD-5): a Branch-scoped User (BranchId != null) must only ever see their own
+    // Branch's data - GetStaff used to return the whole Mart's staff to anyone holding "manage
+    // staff and Roles", including a Branch-scoped Manager. CreateManagerAsync seeds a fresh
+    // Branch per call, so the two Managers here land in different Branches for free.
+    [Fact]
+    public async Task GetStaff_SignedInAsBranchScopedManager_OnlyListsOwnBranchsStaff()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var manager1Email = $"manager1-{Guid.NewGuid():N}@example.com";
+        var (_, _, manager1SetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, manager1Email);
+        var manager2Email = $"manager2-{Guid.NewGuid():N}@example.com";
+        await CreateManagerAsync(martCode, ownerEmail, ownerClient, manager2Email);
+
+        const string managerPassword = "Manager-Pass1!";
+        using var manager1Client = _factory.CreateClient();
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = manager1Email, setupCode = manager1SetupCode, password = managerPassword });
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = manager1Email, password = managerPassword });
+
+        var response = await manager1Client.GetAsync("/api/v1/staff");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var staff = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var entries = staff.EnumerateArray().ToList();
+        var entry = Assert.Single(entries);
+        Assert.Equal(manager1Email, entry.GetProperty("email").GetString());
+    }
 }

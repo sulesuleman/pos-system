@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-13-2026 14:55
-last_updated: 11-20-2026 00:00
+last_updated: 11-20-2026 01:00
 project: POS-System
 project_key: NOKEY
 tracking_system: file-system
@@ -50,7 +50,7 @@ development_status:
   2-1-define-roles-from-the-permission-list: review
   2-2-create-staff-accounts-and-assign-roles-per-branch: review
   2-3-staff-activation-and-login: review
-  2-4-enforce-permissions-and-branch-assignment-on-every-request: backlog
+  2-4-enforce-permissions-and-branch-assignment-on-every-request: review
   2-5-disable-accounts-and-reset-pins: backlog
   2-6-register-a-branch-s-first-device: backlog
   2-7-add-and-revoke-registered-devices: backlog

@@ -45,9 +45,11 @@ No other gap found - every other endpoint is already either correctly Permission
 
 ## Tasks
 
-- [ ] Fix `StaffEndpoints.GetStaff`: scope the query to `u.BranchId == currentUser.BranchId` when `currentUser.BranchId is not null` (Owner, `BranchId == null`, keeps seeing everyone) — same shape as `BranchesEndpoints.GetBranches`.
-- [ ] New test: a Branch-scoped Manager with `manage staff and Roles` calls `GET /staff` and sees only their own Branch's staff (plus, decide: should the Owner's own row ever show to a Branch-scoped Manager, given the Owner has no `BranchId`? Recommend excluding it, consistent with "only their own Branch's data").
-- [ ] Re-run full suite, confirm no regression in `AuthEndpointTests`/`BranchesEndpointTests`/`RoleEndpointTests`/`TenantIsolationTests`.
+All done 2026-11-20. Per the user's explicit "do it yourself" instruction, Claude implemented this directly (one-off exception to the standing arrangement — see [[backend-user-implements]]).
+
+- [x] Fixed `StaffEndpoints.GetStaff`: scoped the query to `u.BranchId == currentUser.BranchId` when `currentUser.BranchId is not null` (Owner, `BranchId == null`, still sees everyone) — same shape as `BranchesEndpoints.GetBranches`. Decided to exclude the Owner's own row from a Branch-scoped Manager's list (the Owner has no `BranchId`, so it's filtered out naturally - no special-casing needed).
+- [x] New test `GetStaff_SignedInAsBranchScopedManager_OnlyListsOwnBranchsStaff` in `AuthEndpointTests.cs`: two Managers created via `CreateManagerAsync` (each call seeds its own fresh Branch), Manager 1 signs in and calls `GET /staff`, asserts the response contains only themself - not the Owner, not Manager 2.
+- [x] Full suite re-run: a stray leftover `dotnet run` process (PID 5576, from an earlier session) was locking the build output - killed with the user's explicit approval. **99** `backend.Api.Tests` + **12** `backend.IntegrationTests` all passing (one more Api test than before this change), solution builds clean.
 
 ## Notes
 
