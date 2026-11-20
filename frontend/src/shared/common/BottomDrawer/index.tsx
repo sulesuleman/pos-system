@@ -21,6 +21,8 @@ export type BottomDrawerProps = {
   actions?: ReactNode
   /** Extra styles merged onto the body - the drawer keeps its own responsive padding. */
   contentSx?: SxProps<Theme>
+  /** Fires once the close transition finishes. */
+  onExited?: () => void
 }
 
 // Keeps the layout viewport's keyboard inset in a `--kb` CSS var while `on`, so the sheet can
@@ -63,6 +65,7 @@ export function BottomDrawer({
   description,
   actions,
   contentSx,
+  onExited,
 }: BottomDrawerProps) {
   const styles = useBottomDrawerStyles()
   useKeyboardInset(open)
@@ -81,14 +84,17 @@ export function BottomDrawer({
         }
         onClose()
       }}
-      slotProps={{ paper: { sx: [styles.paper, { height, minHeight, maxHeight }] } }}
+      slotProps={{
+        paper: { sx: [styles.paper, { height, minHeight, maxHeight }] },
+        transition: { onExited },
+      }}
     >
       <Box sx={styles.handleWrapper}>
         <Box sx={styles.handle} />
       </Box>
 
       {(title || titleIcon || description) && (
-        <Box sx={styles.header}>
+        <Box sx={[styles.header, ...(!description ? [styles.headerNoDescription] : [])]}>
           {titleIcon}
           <Box sx={styles.headerText}>
             {title && (

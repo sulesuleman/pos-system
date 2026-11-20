@@ -1,7 +1,5 @@
 import type { ReactNode } from 'react'
 import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
@@ -12,6 +10,7 @@ import Typography from '@mui/material/Typography'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme, type Breakpoint, type SxProps, type Theme } from '@mui/material/styles'
 import { BottomDrawer } from '../BottomDrawer'
+import { StyledButton } from '../Buttons/StyledButton'
 import { useStyledDialogStyles } from './useStyledDialogStyles'
 
 export type StyledDialogProps = {
@@ -38,6 +37,9 @@ export type StyledDialogProps = {
   submitDisabled?: boolean
   /** Override for the body's own inner spacing. */
   contentSx?: SxProps<Theme>
+  /** Fires once the close transition finishes - e.g. to reset form state only after the dialog
+   * is fully off-screen, not while it's still animating out. */
+  onExited?: () => void
 }
 
 // The app's one dialog: a desktop/tablet MUI Dialog that becomes a BottomDrawer sheet below
@@ -63,6 +65,7 @@ export function StyledDialog({
   paperSx,
   submitDisabled = false,
   contentSx,
+  onExited,
 }: StyledDialogProps) {
   const theme = useTheme()
   const styles = useStyledDialogStyles()
@@ -72,18 +75,19 @@ export function StyledDialog({
     ? undefined
     : (actions ?? (
         <>
-          <Button onClick={onClose} variant="outlined" size="large" disabled={loading}>
+          <StyledButton onClick={onClose} variant="outlined" size="large" disabled={loading}>
             {cancelText}
-          </Button>
-          <Button
+          </StyledButton>
+          <StyledButton
             onClick={onSubmit}
             variant="contained"
             size="large"
             type="submit"
-            disabled={loading || submitDisabled}
+            loading={loading}
+            disabled={submitDisabled}
           >
-            {loading ? <CircularProgress size={20} color="inherit" /> : confirmText}
-          </Button>
+            {confirmText}
+          </StyledButton>
         </>
       ))
 
@@ -99,6 +103,7 @@ export function StyledDialog({
         height="auto"
         maxHeight={`calc(${fullHeight ? 95 : 90}dvh - var(--kb, 0px))`}
         contentSx={contentSx}
+        onExited={onExited}
       >
         {children}
       </BottomDrawer>
@@ -116,6 +121,7 @@ export function StyledDialog({
       fullWidth
       slotProps={{
         paper: { sx: [...(fullHeight ? [styles.paperFullHeight] : []), ...paperSxArray] },
+        transition: { onExited },
       }}
     >
       <DialogTitle
@@ -146,8 +152,8 @@ export function StyledDialog({
           </Box>
         )}
         <Box sx={styles.closeButtonRow}>
-          <IconButton onClick={onClose} aria-label="Close" size="small">
-            <CloseIcon fontSize="small" />
+          <IconButton onClick={onClose} aria-label="Close" title="Close" size="xs">
+            <CloseIcon fontSize="inherit" sx={{ color: theme.palette.action.disabled }} />
           </IconButton>
         </Box>
       </DialogTitle>

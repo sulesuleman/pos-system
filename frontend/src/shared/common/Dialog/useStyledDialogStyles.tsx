@@ -35,7 +35,7 @@ export function useStyledDialogStyles() {
   const titleBlock: SxProps<Theme> = {
     display: 'flex',
     alignItems: 'center',
-    gap: 1.5,
+    gap: 2,
     minWidth: 0,
   }
 

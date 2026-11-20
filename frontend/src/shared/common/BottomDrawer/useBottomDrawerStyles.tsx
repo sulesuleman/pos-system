@@ -51,6 +51,13 @@ export function useBottomDrawerStyles() {
     minWidth: 0,
   }
 
+  // Without a description the header is a plain icon+title row with a tighter gap than the
+  // icon+title+description layout.
+  const headerNoDescription: SxProps<Theme> = {
+    alignItems: 'center',
+    gap: 1,
+  }
+
   const headerText: SxProps<Theme> = {
     minWidth: 0,
   }
@@ -92,6 +99,7 @@ export function useBottomDrawerStyles() {
     handleWrapper,
     handle,
     header,
+    headerNoDescription,
     headerText,
     headerTitle,
     headerDescription,
