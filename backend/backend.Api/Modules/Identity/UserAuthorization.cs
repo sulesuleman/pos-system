@@ -30,4 +30,38 @@ public static class UserAuthorization
 
         return await db.RolePermissions.AnyAsync(rp => rp.RoleId == user.RoleId && rp.PermissionId == permissionId);
     }
+
+    // Story 2.5 (FR-1): "a Role is lower when its Permissions are a strict subset of the
+    // resetter's" - works for any custom Role too, not just the 3 built-ins, since it compares
+    // actual RolePermissions sets rather than hardcoding Role names. The Owner can never be the
+    // target (nobody disables/resets the Owner); the Owner acting always outranks everyone else;
+    // two Users on the exact same Role never outrank each other.
+    public static async Task<bool> IsStrictlyHigherRoleAsync(AppDbContext db, User actingUser, User targetUser)
+    {
+        if (targetUser.RoleId == RoleIds.Owner)
+        {
+            return false;
+        }
+
+        if (actingUser.RoleId == RoleIds.Owner)
+        {
+            return true;
+        }
+
+        if (actingUser.RoleId == targetUser.RoleId)
+        {
+            return false;
+        }
+
+        var actingPermissionIds = await db.RolePermissions
+            .Where(rp => rp.RoleId == actingUser.RoleId)
+            .Select(rp => rp.PermissionId)
+            .ToListAsync();
+        var targetPermissionIds = await db.RolePermissions
+            .Where(rp => rp.RoleId == targetUser.RoleId)
+            .Select(rp => rp.PermissionId)
+            .ToListAsync();
+
+        return targetPermissionIds.ToHashSet().IsProperSubsetOf(actingPermissionIds.ToHashSet());
+    }
 }

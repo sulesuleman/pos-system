@@ -28,6 +28,12 @@ public class User
 
     public string? PasswordHash { get; set; }
 
+    // Story 2.5 (FR-1/FR-27): the Owner, or a higher-Role staff member with "manage staff and
+    // Roles", disables an account instead of deleting it - history stays visible, same one-way
+    // pattern as Branch.IsActive. A disabled account can't sign in, and an already-signed-in
+    // session for it is ended on its next request (Program.cs's suspension/disabled middleware).
+    public bool IsActive { get; set; } = true;
+
     // Reserved for Epic 2's Counter-role PIN login - unused until that story is built.
     public string? PinHash { get; set; }
 

@@ -57,7 +57,7 @@ public static class AuthEndpoints
             .IgnoreQueryFilters()
             .SingleOrDefaultAsync(u => u.MartId == mart.Id && u.Email == request.Email);
 
-        if (user is null || user.SetupCodeHash is null)
+        if (user is null || user.SetupCodeHash is null || !user.IsActive)
         {
             return Results.BadRequest(new { error = GenericError });
         }
@@ -117,7 +117,10 @@ public static class AuthEndpoints
             ? PasswordVerificationResult.Failed
             : hasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
 
-        if (user is null || user.PasswordHash is null || verifyResult == PasswordVerificationResult.Failed)
+        // Story 2.5: a disabled account is refused the same way wrong credentials would be - it
+        // never reveals that the account exists but is disabled, rather than being a signal in
+        // its own right.
+        if (user is null || user.PasswordHash is null || !user.IsActive || verifyResult == PasswordVerificationResult.Failed)
         {
             PlatformAuditLogger.Record(db, httpContext, "UserSignInFailed", attemptedEmail: request.Email, attemptedMartCode: martCode);
             await db.SaveChangesAsync();
@@ -205,6 +208,11 @@ public static class AuthEndpoints
 
     private static IResult MartSuspendedResult() =>
         Results.Json(new { error = MartSuspendedMessage }, statusCode: StatusCodes.Status403Forbidden);
+
+    // Story 2.5 (FR-1): the message for a request whose own session User has been disabled -
+    // public so Program.cs's session-validity middleware can reuse it instead of hand-duplicating
+    // the sentence, same reasoning as MartSuspendedMessage above.
+    public const string UserDisabledMessage = "This account has been disabled. Contact your Owner for help.";
 }
 
 public record ActivateUserRequest(string MartCode, string Email, string SetupCode, string Password);

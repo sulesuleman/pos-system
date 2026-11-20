@@ -20,6 +20,8 @@ public static class StaffEndpoints
     {
         group.MapPost("/staff", CreateStaff);
         group.MapGet("/staff", GetStaff);
+        group.MapPost("/staff/{id:guid}/disable", DisableStaff);
+        group.MapPost("/staff/{id:guid}/reset-credentials", ResetCredentials);
     }
 
     private static async Task<IResult> CreateStaff(CreateStaffRequest request, AppDbContext db, HttpContext httpContext)
@@ -167,13 +169,125 @@ public static class StaffEndpoints
                 lastName = x.u.LastName,
                 email = x.u.Email,
                 role = x.RoleName,
-                active = x.u.PasswordHash != null || x.u.PinHash != null,
+                activated = x.u.PasswordHash != null || x.u.PinHash != null,
+                isActive = x.u.IsActive,
                 branchId = x.u.BranchId,
                 branchName = branch != null ? branch.Name : null,
             })
             .ToListAsync();
 
         return Results.Ok(staff);
+    }
+
+    // Story 2.5 (FR-1/FR-27): the Owner, or a User whose Role strictly outranks the target's
+    // (see UserAuthorization.IsStrictlyHigherRoleAsync), disables an account - it stops signing
+    // in immediately and an already-open session for it ends on its next request (Program.cs's
+    // middleware). One-way, same as Branch.IsActive - no re-enable endpoint exists.
+    private static async Task<IResult> DisableStaff(Guid id, AppDbContext db, HttpContext httpContext)
+    {
+        var currentUser = await RequireCreatorWithStaffPermissionAsync(db, httpContext);
+        if (currentUser is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var targetUser = await FindTargetInOwnScopeAsync(db, currentUser, id);
+        if (targetUser is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (!await UserAuthorization.IsStrictlyHigherRoleAsync(db, currentUser, targetUser))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!targetUser.IsActive)
+        {
+            return Results.BadRequest(new { error = "This account is already disabled." });
+        }
+
+        targetUser.IsActive = false;
+
+        AuditLogger.Record(
+            db,
+            currentUser.MartId,
+            currentUser.Id,
+            entityType: "User",
+            entityId: targetUser.Id,
+            action: "Disabled",
+            oldValues: new { IsActive = true },
+            newValues: new { IsActive = false },
+            httpContext);
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new { id = targetUser.Id, isActive = targetUser.IsActive });
+    }
+
+    // Story 2.5 (FR-1/FR-27): same authorization as DisableStaff. Generates a fresh setup code
+    // (same shape as account creation's one-time reveal) and clears the old password, so the
+    // staff member re-activates through the existing /auth/activate flow with the new code - no
+    // separate "reset" flow needs to exist.
+    private static async Task<IResult> ResetCredentials(Guid id, AppDbContext db, HttpContext httpContext)
+    {
+        var currentUser = await UserAuthorization.GetSignedInUserAsync(db, httpContext);
+        if (currentUser is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var hasResetPermission = await UserAuthorization.HasPermissionAsync(db, currentUser, PermissionIds.ResetPins);
+        if (!hasResetPermission)
+        {
+            return Results.Unauthorized();
+        }
+
+        var targetUser = await FindTargetInOwnScopeAsync(db, currentUser, id);
+        if (targetUser is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (!await UserAuthorization.IsStrictlyHigherRoleAsync(db, currentUser, targetUser))
+        {
+            return Results.Unauthorized();
+        }
+
+        var setupCode = SetupCodeGenerator.Generate();
+        targetUser.SetupCodeHash = setupCode.Hash;
+        targetUser.SetupCodeExpiresAtUtc = setupCode.ExpiresAtUtc;
+        targetUser.SetupCodeUsedAtUtc = null;
+        targetUser.PasswordHash = null;
+
+        AuditLogger.Record(
+            db,
+            currentUser.MartId,
+            currentUser.Id,
+            entityType: "User",
+            entityId: targetUser.Id,
+            action: "CredentialsReset",
+            oldValues: null,
+            newValues: null,
+            httpContext);
+
+        await db.SaveChangesAsync();
+
+        return Results.Ok(new { setupCode = setupCode.PlaintextCode });
+    }
+
+    // Shared by DisableStaff/ResetCredentials: the query filter already scopes to this Mart, and
+    // a Branch-scoped actor (BranchId != null) only ever acts on their own Branch's staff - same
+    // AD-16 rule StaffEndpoints.GetStaff and BranchesEndpoints already apply.
+    private static async Task<User?> FindTargetInOwnScopeAsync(AppDbContext db, User currentUser, Guid targetId)
+    {
+        var query = db.Users.AsQueryable();
+        if (currentUser.BranchId is not null)
+        {
+            query = query.Where(u => u.BranchId == currentUser.BranchId);
+        }
+
+        return await query.SingleOrDefaultAsync(u => u.Id == targetId);
     }
 
     // Owner passes via the identity bypass (holds no RolePermissions rows). Anyone else needs

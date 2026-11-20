@@ -4,6 +4,7 @@ using System.Text.Json;
 using backend.Api.Infrastructure.Persistence;
 using backend.Api.Modules.Identity;
 using backend.Api.Modules.Identity.Domain;
+using backend.Api.Modules.Identity.Endpoints;
 using backend.Api.Modules.Tenancy.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -752,5 +753,345 @@ public class AuthEndpointTests : ApiTestFixtureBase
         var entries = staff.EnumerateArray().ToList();
         var entry = Assert.Single(entries);
         Assert.Equal(manager1Email, entry.GetProperty("email").GetString());
+    }
+
+    // --- Story 2.5: disable accounts and reset credentials (FR-1, FR-27) ---
+
+    // No Cashier-creation endpoint exists yet (Counter-role login is still backlog) - seed one
+    // directly with a password set, same pattern CreateBranchForOwnerAsync/the Trainee test use
+    // for entities this slice has no API to create. A password (not PinHash) stands in for the
+    // Cashier's credential here, same simplifying choice this story's scope decision made for
+    // every Owner/Manager-shaped account.
+    private async Task<(Guid UserId, string Email)> CreateCashierAsync(Guid martId, Guid branchId, string password)
+    {
+        var email = $"cashier-{Guid.NewGuid():N}@example.com";
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var cashier = new User
+        {
+            Id = Guid.NewGuid(),
+            MartId = martId,
+            StaffId = await StaffIdGenerator.GenerateNextAsync(db, martId),
+            RoleId = RoleIds.Cashier,
+            BranchId = branchId,
+            FirstName = "Cashier",
+            LastName = "Person",
+            Email = email,
+            Contact = "03001234567",
+            Cnic = "1234512345671",
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        var hasher = new PasswordHasher<User>();
+        cashier.PasswordHash = hasher.HashPassword(cashier, password);
+        db.Users.Add(cashier);
+        await db.SaveChangesAsync();
+        return (cashier.Id, email);
+    }
+
+    [Fact]
+    public async Task DisableStaff_AsOwner_EndsTheirOpenSessionOnNextRequestAndBlocksSignIn()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
+        var (managerId, _, managerSetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+        const string managerPassword = "Manager-Pass1!";
+        using var managerClient = _factory.CreateClient();
+        await managerClient.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = managerEmail, setupCode = managerSetupCode, password = managerPassword });
+        await managerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = managerEmail, password = managerPassword });
+
+        var disableResponse = await ownerClient.PostAsync($"/api/v1/staff/{managerId}/disable", null);
+        Assert.Equal(HttpStatusCode.OK, disableResponse.StatusCode);
+
+        // The already-signed-in Manager's next request is refused and their session cleared -
+        // not just a future sign-in attempt.
+        var sessionResponse = await managerClient.GetAsync("/api/v1/auth/session");
+        Assert.Equal(HttpStatusCode.Forbidden, sessionResponse.StatusCode);
+        var sessionBody = await sessionResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(AuthEndpoints.UserDisabledMessage, sessionBody.GetProperty("error").GetString());
+
+        using var freshAttemptClient = _factory.CreateClient();
+        var signInResponse = await freshAttemptClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = managerEmail, password = managerPassword });
+        Assert.Equal(HttpStatusCode.Unauthorized, signInResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DisableStaff_WritesAnAuditLogEntry()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        var ownerSignIn = await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+        var ownerSession = await ownerSignIn.Content.ReadFromJsonAsync<JsonElement>();
+        var ownerId = Guid.Parse(ownerSession.GetProperty("userId").GetString()!);
+
+        var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
+        var (managerId, _, _) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+
+        await ownerClient.PostAsync($"/api/v1/staff/{managerId}/disable", null);
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var entry = await db.AuditLogEntries
+            .IgnoreQueryFilters()
+            .SingleAsync(e => e.EntityType == "User" && e.EntityId == managerId && e.Action == "Disabled");
+        Assert.Equal(ownerId, entry.UserId);
+    }
+
+    [Fact]
+    public async Task DisableStaff_SignedInAsManager_CannotDisableAnotherManager()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var manager1Email = $"manager1-{Guid.NewGuid():N}@example.com";
+        var (_, _, manager1SetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, manager1Email);
+        var sharedBranchId = await GetBranchIdForEmailAsync(manager1Email);
+
+        // Manager 2 shares Manager 1's own Branch (CreateManagerAsync would otherwise seed a
+        // fresh one), so this test isolates the Role-equality refusal from Story 2.4's separate
+        // Branch-scoping refusal - see DisableStaff_BranchScopedManager_CannotDisableStaffInAnotherBranch.
+        var manager2Email = $"manager2-{Guid.NewGuid():N}@example.com";
+        var manager2Response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/staff",
+            new { firstName = "Manager", lastName = "Two", email = manager2Email, contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager, branchId = sharedBranchId });
+        var manager2Body = await manager2Response.Content.ReadFromJsonAsync<JsonElement>();
+        var manager2Id = Guid.Parse(manager2Body.GetProperty("userId").GetString()!);
+
+        const string managerPassword = "Manager-Pass1!";
+        using var manager1Client = _factory.CreateClient();
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = manager1Email, setupCode = manager1SetupCode, password = managerPassword });
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = manager1Email, password = managerPassword });
+
+        var response = await manager1Client.PostAsync($"/api/v1/staff/{manager2Id}/disable", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DisableStaff_SignedInAsManager_CanDisableALowerRoleCashier()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, martId) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
+        var (_, _, managerSetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+        var managerBranchId = await GetBranchIdForEmailAsync(managerEmail);
+        const string managerPassword = "Manager-Pass1!";
+        using var managerClient = _factory.CreateClient();
+        await managerClient.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = managerEmail, setupCode = managerSetupCode, password = managerPassword });
+        await managerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = managerEmail, password = managerPassword });
+
+        var (cashierId, _) = await CreateCashierAsync(martId, managerBranchId, "Cashier-Pass1!");
+
+        var response = await managerClient.PostAsync($"/api/v1/staff/{cashierId}/disable", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DisableStaff_AlreadyDisabled_ReturnsBadRequest()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
+        var (managerId, _, _) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+        await ownerClient.PostAsync($"/api/v1/staff/{managerId}/disable", null);
+
+        var response = await ownerClient.PostAsync($"/api/v1/staff/{managerId}/disable", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DisableStaff_BranchScopedManager_CannotDisableStaffInAnotherBranch()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var manager1Email = $"manager1-{Guid.NewGuid():N}@example.com";
+        var (_, _, manager1SetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, manager1Email);
+        var manager2Email = $"manager2-{Guid.NewGuid():N}@example.com";
+        var (manager2Id, _, _) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, manager2Email);
+
+        const string managerPassword = "Manager-Pass1!";
+        using var manager1Client = _factory.CreateClient();
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = manager1Email, setupCode = manager1SetupCode, password = managerPassword });
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = manager1Email, password = managerPassword });
+
+        // Manager 1 holds "manage staff and Roles" and would otherwise outrank a Manager-created
+        // Cashier, but Manager 2's Branch isn't their own - FindTargetInOwnScopeAsync should
+        // exclude it entirely before the Role comparison is even reached.
+        var response = await manager1Client.PostAsync($"/api/v1/staff/{manager2Id}/disable", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetCredentials_AsOwner_OldPasswordStopsWorkingAndNewSetupCodeActivates()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
+        var (managerId, _, managerSetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+        const string oldPassword = "Manager-Pass1!";
+        using var managerClient = _factory.CreateClient();
+        await managerClient.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = managerEmail, setupCode = managerSetupCode, password = oldPassword });
+
+        var resetResponse = await ownerClient.PostAsync($"/api/v1/staff/{managerId}/reset-credentials", null);
+        Assert.Equal(HttpStatusCode.OK, resetResponse.StatusCode);
+        var resetBody = await resetResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var newSetupCode = resetBody.GetProperty("setupCode").GetString()!;
+
+        using var oldPasswordAttempt = _factory.CreateClient();
+        var oldSignIn = await oldPasswordAttempt.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = managerEmail, password = oldPassword });
+        Assert.Equal(HttpStatusCode.Unauthorized, oldSignIn.StatusCode);
+
+        const string newPassword = "Manager-Pass2!";
+        using var reactivateClient = _factory.CreateClient();
+        var reactivateResponse = await reactivateClient.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = managerEmail, setupCode = newSetupCode, password = newPassword });
+        Assert.Equal(HttpStatusCode.OK, reactivateResponse.StatusCode);
+
+        var newSignIn = await reactivateClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = managerEmail, password = newPassword });
+        Assert.Equal(HttpStatusCode.OK, newSignIn.StatusCode);
+    }
+
+    [Fact]
+    public async Task ResetCredentials_SignedInAsManager_CannotResetAnotherManagerInTheSameBranch()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+
+        var manager1Email = $"manager1-{Guid.NewGuid():N}@example.com";
+        var (_, _, manager1SetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, manager1Email);
+        var sharedBranchId = await GetBranchIdForEmailAsync(manager1Email);
+
+        // Same-Branch, so this isolates the Role-equality refusal from Story 2.4's separate
+        // Branch-scoping refusal.
+        var manager2Email = $"manager2-{Guid.NewGuid():N}@example.com";
+        var manager2Response = await ownerClient.PostAsJsonAsync(
+            "/api/v1/staff",
+            new { firstName = "Manager", lastName = "Two", email = manager2Email, contact = "03001234567", cnic = "12345-1234567-1", roleId = RoleIds.Manager, branchId = sharedBranchId });
+        var manager2Body = await manager2Response.Content.ReadFromJsonAsync<JsonElement>();
+        var manager2Id = Guid.Parse(manager2Body.GetProperty("userId").GetString()!);
+
+        const string managerPassword = "Manager-Pass1!";
+        using var manager1Client = _factory.CreateClient();
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = manager1Email, setupCode = manager1SetupCode, password = managerPassword });
+        await manager1Client.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = manager1Email, password = managerPassword });
+
+        var resetAnotherManager = await manager1Client.PostAsync($"/api/v1/staff/{manager2Id}/reset-credentials", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, resetAnotherManager.StatusCode);
+    }
+
+    // The Owner has no BranchId - a Branch-scoped Manager's own Branch-scoping (Story 2.4)
+    // already excludes the Owner's row before the Role comparison is even reached, so this
+    // refuses with NotFound rather than Unauthorized. Either way, the Owner can never be reset.
+    [Fact]
+    public async Task ResetCredentials_SignedInAsBranchScopedManager_CannotResetTheOwner()
+    {
+        var ownerEmail = $"owner-{Guid.NewGuid():N}@example.com";
+        var (martCode, ownerSetupCode, _) = await CreateMartAndOwnerAsync(ownerEmail);
+        await ActivateAsync(martCode, ownerEmail, ownerSetupCode);
+        using var ownerClient = _factory.CreateClient();
+        var ownerSignIn = await ownerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = ownerEmail, password = OwnerPassword });
+        var ownerSession = await ownerSignIn.Content.ReadFromJsonAsync<JsonElement>();
+        var ownerId = Guid.Parse(ownerSession.GetProperty("userId").GetString()!);
+
+        var managerEmail = $"manager-{Guid.NewGuid():N}@example.com";
+        var (_, _, managerSetupCode) = await CreateManagerAsync(martCode, ownerEmail, ownerClient, managerEmail);
+        const string managerPassword = "Manager-Pass1!";
+        using var managerClient = _factory.CreateClient();
+        await managerClient.PostAsJsonAsync(
+            "/api/v1/auth/activate",
+            new { martCode, email = managerEmail, setupCode = managerSetupCode, password = managerPassword });
+        await managerClient.PostAsJsonAsync(
+            "/api/v1/auth/sign-in",
+            new { martCode, email = managerEmail, password = managerPassword });
+
+        var resetOwner = await managerClient.PostAsync($"/api/v1/staff/{ownerId}/reset-credentials", null);
+
+        Assert.Equal(HttpStatusCode.NotFound, resetOwner.StatusCode);
+    }
+
+    private async Task<Guid> GetBranchIdForEmailAsync(string email)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await db.Users.IgnoreQueryFilters().SingleAsync(u => u.Email == email);
+        return user.BranchId!.Value;
     }
 }

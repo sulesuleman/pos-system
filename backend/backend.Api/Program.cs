@@ -97,10 +97,10 @@ app.UseCors(FrontendCorsPolicy);
 
 app.UseSession();
 
-// Story 1.7 (FR-25): a suspended Mart refuses every API request from its already-signed-in
-// Users "on next contact", not just a fresh sign-in - one choke point here instead of a repeated
-// check in every Mart-scoped endpoint. Super Admin sessions never set "MartId", so this never
-// touches /super-admin/* or /marts/* (the endpoints Super Admin uses to suspend/reactivate).
+// Story 1.7 (FR-25) and Story 2.5 (FR-1): a suspended Mart, or a disabled User, refuses every
+// API request from its already-signed-in session "on next contact", not just a fresh sign-in -
+// one choke point here instead of a repeated check in every endpoint. Super Admin sessions never
+// set "MartId"/"UserId", so this never touches /super-admin/* or /marts/*.
 app.Use(async (context, next) =>
 {
     var martIdValue = context.Session.GetString("MartId");
@@ -115,6 +115,20 @@ app.Use(async (context, next) =>
             // Shares AuthEndpoints.MartSuspendedMessage (Story 1.7/FR-25) rather than hardcoding
             // its own copy, so the two can never drift out of sync with each other.
             await context.Response.WriteAsJsonAsync(new { error = AuthEndpoints.MartSuspendedMessage });
+            return;
+        }
+    }
+
+    var userIdValue = context.Session.GetString("UserId");
+    if (userIdValue is not null && Guid.TryParse(userIdValue, out var userId))
+    {
+        var db = context.RequestServices.GetRequiredService<AppDbContext>();
+        var user = await db.Users.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(u => u.Id == userId);
+        if (user is null || !user.IsActive)
+        {
+            context.Session.Clear();
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new { error = AuthEndpoints.UserDisabledMessage });
             return;
         }
     }

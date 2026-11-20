@@ -54,6 +54,10 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<User>()
+            .Property(u => u.IsActive)
+            .HasDefaultValue(true);
+
+        modelBuilder.Entity<User>()
             .HasQueryFilter(u => u.MartId == _currentMartId);
 
         modelBuilder.Entity<User>()
