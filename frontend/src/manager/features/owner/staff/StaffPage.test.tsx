@@ -45,7 +45,8 @@ describe('StaffPage', () => {
           lastName: 'Ahmed',
           email: 'bilal@example.com',
           role: 'Manager',
-          active: true,
+          activated: true,
+          isActive: true,
           branchId: 'branch-1',
           branchName: 'Main Branch',
         },
@@ -84,7 +85,8 @@ describe('StaffPage', () => {
             lastName: 'Manager',
             email: 'new-manager@example.com',
             role: 'Manager',
-            active: false,
+            activated: false,
+            isActive: true,
             branchId: 'branch-1',
             branchName: 'Main Branch',
           },
@@ -118,5 +120,61 @@ describe('StaffPage', () => {
 
     expect(await screen.findByText('New Manager')).toBeInTheDocument()
     expect(listStaffSpy).toHaveBeenCalledTimes(2)
+  })
+
+  const MANAGER_ROW = {
+    id: '1',
+    staffId: '1001',
+    firstName: 'Bilal',
+    lastName: 'Ahmed',
+    email: 'bilal@example.com',
+    role: 'Manager',
+    activated: true,
+    isActive: true,
+    branchId: 'branch-1',
+    branchName: 'Main Branch',
+  }
+
+  it('disables a staff member after confirming, and refreshes the list', async () => {
+    const listStaffSpy = vi.spyOn(staffApi, 'listStaff').mockResolvedValue({ ok: true, staff: [MANAGER_ROW] })
+    const disableStaffSpy = vi.spyOn(staffApi, 'disableStaff').mockResolvedValue({ ok: true })
+
+    renderPage()
+    await screen.findByText('Bilal Ahmed')
+    fireEvent.click(screen.getByRole('button', { name: 'Disable Bilal Ahmed' }))
+
+    expect(await screen.findByText(/will no longer be able to sign in/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Disable' }))
+
+    await vi.waitFor(() => expect(disableStaffSpy).toHaveBeenCalledWith('1'))
+    await vi.waitFor(() => expect(listStaffSpy).toHaveBeenCalledTimes(2))
+  })
+
+  it('shows the refused-action message when disabling is unauthorized', async () => {
+    vi.spyOn(staffApi, 'listStaff').mockResolvedValue({ ok: true, staff: [MANAGER_ROW] })
+    vi.spyOn(staffApi, 'disableStaff').mockResolvedValue({ ok: false, reason: 'unauthorized' })
+
+    renderPage()
+    await screen.findByText('Bilal Ahmed')
+    fireEvent.click(screen.getByRole('button', { name: 'Disable Bilal Ahmed' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Disable' }))
+
+    expect(await screen.findByText(/don't have permission/i)).toBeInTheDocument()
+  })
+
+  it('resets credentials after confirming and reveals the new setup code', async () => {
+    vi.spyOn(staffApi, 'listStaff').mockResolvedValue({ ok: true, staff: [MANAGER_ROW] })
+    const resetSpy = vi.spyOn(staffApi, 'resetStaffCredentials').mockResolvedValue({ ok: true, setupCode: 'NEWCODE1' })
+
+    renderPage()
+    await screen.findByText('Bilal Ahmed')
+    fireEvent.click(screen.getByRole('button', { name: 'Reset credentials for Bilal Ahmed' }))
+
+    expect(await screen.findByText(/stops working immediately/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+
+    await vi.waitFor(() => expect(resetSpy).toHaveBeenCalledWith('1'))
+    expect(await screen.findByText('NEWCODE1')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
   })
 })

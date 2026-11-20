@@ -7,7 +7,11 @@ export type StaffMember = {
   lastName: string
   email: string | null
   role: string
-  active: boolean
+  // Whether they've set a password/PIN yet - unrelated to isActive below.
+  activated: boolean
+  // Story 2.5: false once the Owner (or a higher-Role holder of "manage staff and Roles")
+  // disables the account. One-way, same as a Branch's own isActive.
+  isActive: boolean
   branchId: string | null
   branchName: string | null
 }
@@ -47,6 +51,13 @@ export type CreateStaffResult =
   | { ok: false; reason: 'validation'; errors: CreateStaffFieldErrors }
   | { ok: false; reason: 'error' }
 
+// 'unauthorized' covers both "you don't hold the right Permission" and "your Role doesn't
+// outrank theirs" (Story 2.5) - the server refuses both the same way, with no reason to tell
+// them apart in the UI's error message.
+export type DisableStaffResult = { ok: true } | { ok: false; reason: 'conflict' | 'unauthorized' | 'error' }
+
+export type ResetStaffCredentialsResult = { ok: true; setupCode: string } | { ok: false; reason: 'unauthorized' | 'error' }
+
 function isStaffMember(value: unknown): value is StaffMember {
   if (typeof value !== 'object' || value === null) {
     return false
@@ -59,7 +70,8 @@ function isStaffMember(value: unknown): value is StaffMember {
     typeof candidate.lastName === 'string' &&
     (candidate.email === null || typeof candidate.email === 'string') &&
     typeof candidate.role === 'string' &&
-    typeof candidate.active === 'boolean' &&
+    typeof candidate.activated === 'boolean' &&
+    typeof candidate.isActive === 'boolean' &&
     (candidate.branchId === null || typeof candidate.branchId === 'string') &&
     (candidate.branchName === null || typeof candidate.branchName === 'string')
   )
@@ -121,6 +133,56 @@ export async function createStaff(input: CreateStaffInput): Promise<CreateStaffR
     if (response.status === 400) {
       const body = (await response.json()) as { errors?: CreateStaffFieldErrors }
       return { ok: false, reason: 'validation', errors: body.errors ?? {} }
+    }
+    return { ok: false, reason: 'error' }
+  } catch {
+    return { ok: false, reason: 'error' }
+  }
+}
+
+// Calls POST /api/v1/staff/{id}/disable - the Owner, or a higher-Role holder of "manage staff
+// and Roles" (Story 2.5). Never throws: any failure maps to a typed result.
+export async function disableStaff(staffId: string): Promise<DisableStaffResult> {
+  try {
+    const response = await apiFetch(`/staff/${staffId}/disable`, {
+      method: 'POST',
+      credentials: 'include',
+      signal: AbortSignal.timeout(5000),
+    })
+    if (response.status === 200) {
+      return { ok: true }
+    }
+    if (response.status === 400) {
+      return { ok: false, reason: 'conflict' }
+    }
+    if (response.status === 401) {
+      return { ok: false, reason: 'unauthorized' }
+    }
+    return { ok: false, reason: 'error' }
+  } catch {
+    return { ok: false, reason: 'error' }
+  }
+}
+
+// Calls POST /api/v1/staff/{id}/reset-credentials - same authorization shape as disableStaff,
+// but gated on "reset PINs" instead of "manage staff and Roles". Returns the new one-time setup
+// code to reveal, same as createStaff's own reveal.
+export async function resetStaffCredentials(staffId: string): Promise<ResetStaffCredentialsResult> {
+  try {
+    const response = await apiFetch(`/staff/${staffId}/reset-credentials`, {
+      method: 'POST',
+      credentials: 'include',
+      signal: AbortSignal.timeout(5000),
+    })
+    if (response.status === 200) {
+      const body = (await response.json()) as { setupCode?: unknown }
+      if (typeof body.setupCode !== 'string') {
+        return { ok: false, reason: 'error' }
+      }
+      return { ok: true, setupCode: body.setupCode }
+    }
+    if (response.status === 401) {
+      return { ok: false, reason: 'unauthorized' }
     }
     return { ok: false, reason: 'error' }
   } catch {

@@ -2,8 +2,13 @@ import { useCallback, useEffect, useImperativeHandle, useRef, useState, forwardR
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
+import IconButton from '@mui/material/IconButton'
 import Skeleton from '@mui/material/Skeleton'
+import Stack from '@mui/material/Stack'
+import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
+import LockResetOutlinedIcon from '@mui/icons-material/LockResetOutlined'
 import type { GridColDef } from '@mui/x-data-grid'
 import { StyledDataGrid } from '../../../../shared/common/DataDisplay/StyledDataGrid'
 import { OverflowTooltip } from '../../../../shared/common/DataDisplay/OverflowTooltip'
@@ -15,11 +20,19 @@ export type StaffListHandle = {
   refresh: () => void
 }
 
-// Fetches and renders this Mart's staff table (name, staff ID, email, Role, Branch, whether
-// they've activated yet). No per-row actions yet - disabling accounts/resetting PINs is Story
-// 2.5, still backlog. Exposes a `refresh` handle so the container can reload after a successful
-// create, without a full page reload - same pattern as MartsList/BranchesList.
-export const StaffList = forwardRef<StaffListHandle>(function StaffList(_props, ref) {
+type StaffListProps = {
+  onDisable: (staff: StaffMember) => void
+  onResetCredentials: (staff: StaffMember) => void
+}
+
+// Fetches and renders this Mart's staff table (name, staff ID, email, Role, Branch, status),
+// with a Disable and a Reset credentials action per active, non-Owner row (Story 2.5 - the
+// server is the real authority on who may act on whom; a row whose action the server refuses
+// shows that refusal's error message rather than hiding the button, since this screen doesn't
+// know the caller's or the row's own Permission-rank relationship). Exposes a `refresh` handle
+// so the container can reload after a successful create/disable/reset, without a full page
+// reload - same pattern as MartsList/BranchesList.
+export const StaffList = forwardRef<StaffListHandle, StaffListProps>(function StaffList({ onDisable, onResetCredentials }, ref) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [staff, setStaff] = useState<StaffMember[]>([])
@@ -79,17 +92,56 @@ export const StaffList = forwardRef<StaffListHandle>(function StaffList(_props, 
       renderCell: (params) => <OverflowTooltip text={params.row.branchName ?? '—'} />,
     },
     {
-      field: 'active',
+      field: 'isActive',
       headerName: 'Status',
       flex: 0.6,
-      renderCell: (params) => (
-        <Chip
-          variant="soft"
-          size="small"
-          label={params.row.active ? 'Active' : 'Pending activation'}
-          color={params.row.active ? 'success' : 'default'}
-        />
-      ),
+      renderCell: (params) => {
+        if (!params.row.isActive) {
+          return <Chip variant="soft" size="small" label="Disabled" color="error" />
+        }
+        return (
+          <Chip
+            variant="soft"
+            size="small"
+            label={params.row.activated ? 'Active' : 'Pending activation'}
+            color={params.row.activated ? 'success' : 'default'}
+          />
+        )
+      },
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      flex: 0.75,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        if (params.row.role === 'Owner' || !params.row.isActive) {
+          return null
+        }
+        return (
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Reset credentials">
+              <IconButton
+                size="small"
+                onClick={() => onResetCredentials(params.row)}
+                aria-label={`Reset credentials for ${params.row.firstName} ${params.row.lastName}`}
+              >
+                <LockResetOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Disable account">
+              <IconButton
+                size="small"
+                onClick={() => onDisable(params.row)}
+                aria-label={`Disable ${params.row.firstName} ${params.row.lastName}`}
+              >
+                <BlockOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        )
+      },
     },
   ]
 
